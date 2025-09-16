@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from ...core.config import settings
 from ...core.logging import get_logger
 from ...services.tts_elevenlabs import elevenlabs_tts_service
+from ...services.tts_openai import openai_tts_service
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -80,6 +81,11 @@ async def synthesize_speech(request: TTSRequest) -> TTSResponse:
                 request.text, request.lang, request.voice_hint
             )
             provider = "elevenlabs"
+        elif settings.tts_provider == "openai":
+            audio_bytes, content_type, needs_fallback = await openai_tts_service.synthesize(
+                request.text, request.lang, request.voice_hint
+            )
+            provider = "openai"
             
         elif settings.tts_provider == "browser":
             # Browser TTS should be handled client-side

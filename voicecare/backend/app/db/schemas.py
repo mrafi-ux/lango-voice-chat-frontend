@@ -13,8 +13,20 @@ class UserCreate(BaseModel):
     """Schema for creating a user."""
     name: str = Field(min_length=1, max_length=100)
     role: UserRole
+    gender: Optional[str] = Field(default=None, max_length=20)
     preferred_lang: str = Field(min_length=2, max_length=5)
     preferred_voice: Optional[str] = Field(default=None, max_length=100)
+
+
+class UserRegister(BaseModel):
+    """Schema for user registration (with credentials)."""
+    name: str = Field(min_length=1, max_length=100)
+    role: UserRole
+    gender: Optional[str] = Field(default=None, max_length=20)
+    preferred_lang: str = Field(min_length=2, max_length=5)
+    preferred_voice: Optional[str] = Field(default=None, max_length=100)
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=6, max_length=128)
 
 
 class UserResponse(BaseModel):
@@ -22,6 +34,7 @@ class UserResponse(BaseModel):
     id: str
     name: str
     role: UserRole
+    gender: Optional[str]
     preferred_lang: str
     preferred_voice: Optional[str]
     created_at: datetime
@@ -32,6 +45,18 @@ class UserResponse(BaseModel):
             datetime: lambda dt: dt.isoformat() if dt else None
         }
     )
+
+
+class LoginRequest(BaseModel):
+    """Schema for login request."""
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=6, max_length=128)
+
+
+class AuthResponse(BaseModel):
+    """Schema for authentication response."""
+    user: "UserResponse"
+    token: str
 
 
 # Conversation schemas

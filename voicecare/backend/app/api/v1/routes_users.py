@@ -9,6 +9,8 @@ from ...db.session import get_session
 from ...db.crud import user_crud
 from ...db.schemas import UserCreate, UserResponse
 from ...core.logging import get_logger
+from ...core.security import get_current_user
+from ...db.models import User as UserModel
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -58,3 +60,9 @@ async def get_user(
     except Exception as e:
         logger.error(f"Failed to get user {user_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve user")
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_me(current_user: UserModel = Depends(get_current_user)) -> UserResponse:
+    """Get the currently authenticated user."""
+    return UserResponse.model_validate(current_user)

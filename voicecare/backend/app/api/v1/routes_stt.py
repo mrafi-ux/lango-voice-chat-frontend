@@ -5,8 +5,11 @@ from fastapi import APIRouter, File, Form, UploadFile, HTTPException
 from pydantic import BaseModel
 
 from ...services.stt_whisper import whisper_stt_service
+from ...services.stt_elevenlabs import elevenlabs_stt_service
+from ...services.stt_openai import openai_stt_service
 from ...services.stt_mock import mock_stt_service
 from ...core.logging import get_logger
+from ...core.config import settings
 
 logger = get_logger(__name__)
 
@@ -53,23 +56,40 @@ async def transcribe_audio(
         
         logger.info(f"STT transcription request: {len(audio_data)} bytes, lang hint: {language}")
         
-        # Try Whisper first, fallback to mock on error
+        # Choose provider
         result = None
-        provider = "whisper"
-        
+        provider = settings.stt_provider or "whisper"
+
         try:
-            result = await whisper_stt_service.transcribe_audio(audio_data, language)
-            
-            # Check if Whisper returned an error
+            if provider == "elevenlabs":
+                result = await elevenlabs_stt_service.transcribe_audio(audio_data, language)
+                if "error" in result and result["error"]:
+                    logger.warning(f"ElevenLabs STT failed: {result['error']}, falling back to Whisper")
+                    provider = "whisper"
+                    result = await whisper_stt_service.transcribe_audio(audio_data, language)
+            elif provider == "openai":
+                result = await openai_stt_service.transcribe_audio(audio_data, language)
+                if "error" in result and result["error"]:
+                    logger.warning(f"OpenAI STT failed: {result['error']}, falling back to ElevenLabs")
+                    provider = "elevenlabs"
+                    result = await elevenlabs_stt_service.transcribe_audio(audio_data, language)
+            else:
+                result = await whisper_stt_service.transcribe_audio(audio_data, language)
+                if "error" in result and result["error"]:
+                    logger.warning(f"Whisper STT failed: {result['error']}, falling back to ElevenLabs")
+                    provider = "elevenlabs"
+                    result = await elevenlabs_stt_service.transcribe_audio(audio_data, language)
+
+            # Final fallback to mock if still failing
             if "error" in result and result["error"]:
-                logger.warning(f"Whisper STT failed: {result['error']}, falling back to mock")
-                result = await mock_stt_service.transcribe_audio(audio_data, language)
+                logger.warning(f"Primary STT failed: {result['error']}, falling back to mock")
                 provider = "mock"
-                
-        except Exception as whisper_error:
-            logger.warning(f"Whisper STT exception: {whisper_error}, falling back to mock")
-            result = await mock_stt_service.transcribe_audio(audio_data, language)
+                result = await mock_stt_service.transcribe_audio(audio_data, language)
+
+        except Exception as stt_error:
+            logger.warning(f"STT exception ({provider}): {stt_error}, falling back to mock")
             provider = "mock"
+            result = await mock_stt_service.transcribe_audio(audio_data, language)
         
         # Check for final transcription errors
         if "error" in result and result["error"]:

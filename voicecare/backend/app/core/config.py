@@ -26,21 +26,35 @@ class Settings(BaseSettings):
     max_voice_seconds: int = 120
     
     # STT Configuration
-    stt_provider: str = "whisper"
+    stt_provider: str = "elevenlabs"  # options: elevenlabs, openai, whisper
     whisper_model: str = "tiny"  # Changed from "small" to "tiny" for better reliability
     whisper_compute: str = "cpu"
     whisper_beam_size: int = 1
     whisper_vad: bool = True
     whisper_temperature: float = 0.0
     whisper_no_speech_threshold: float = 0.45
+    elevenlabs_stt_model: str = "scribe_v1"
+    openai_api_key: Optional[str] = None
+    openai_stt_model: str = "whisper-1"
     
     # TTS Configuration
-    tts_provider: str = "elevenlabs"
+    tts_provider: str = "elevenlabs"  # options: elevenlabs, openai, browser
     piper_voices_dir: str = "./voices/piper"
     elevenlabs_api_key: Optional[str] = None
+    openai_tts_model: str = "tts-1"
+    openai_tts_voice: str = "alloy"
     
     # Logging
     log_level: str = "INFO"
+
+    # Auth
+    auth_secret_key: str = "change-me"
+    auth_token_expire_minutes: int = 60
+
+    # Translation
+    # 'auto' uses OpenAI if either STT or TTS is set to OpenAI; otherwise uses 'libre'
+    translation_provider: str = "auto"  # options: auto, openai, libre
+    openai_translate_model: str = "gpt-4o"
 
     @property
     def cors_origins_list(self) -> List[str]:
@@ -53,6 +67,17 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+
+    @property
+    def translation_provider_effective(self) -> str:
+        """Effective translation provider based on config."""
+        val = (self.translation_provider or "auto").lower()
+        if val in {"openai", "libre"}:
+            return val
+        # auto mode: prefer OpenAI if used elsewhere
+        if (self.stt_provider or "").lower() == "openai" or (self.tts_provider or "").lower() == "openai":
+            return "openai"
+        return "libre"
 
 
 # Global settings instance

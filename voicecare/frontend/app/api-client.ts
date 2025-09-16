@@ -138,10 +138,13 @@ export class ApiClient {
   async register(userData: {
     name: string;
     role: string;
+    gender?: string;
     preferred_lang: string;
     preferred_voice?: string;
-  }): Promise<ApiResponse<User>> {
-    return this.request<User>('/v1/users/', {
+    email: string;
+    password: string;
+  }): Promise<ApiResponse<{ user: User; token: string }>> {
+    return this.request<{ user: User; token: string }>('/v1/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     });

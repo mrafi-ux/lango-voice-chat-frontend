@@ -96,7 +96,8 @@ class ElevenLabsTTSService:
     def _find_best_voice(self, lang: str, voice_hint: Optional[str] = None) -> Optional[str]:
         """Find the best voice ID for a language."""
         if not self.voices_cache:
-            return None
+            # If we could not load voices, try hardcoded defaults
+            return self._fallback_voice_for(lang)
         
         # If voice hint provided, try to match it first (could be voice_id or name)
         if voice_hint:
@@ -143,7 +144,28 @@ class ElevenLabsTTSService:
             logger.info(f"Using fallback voice: {fallback_voice['name']}")
             return fallback_voice["voice_id"]
         
-        return None
+        # As a last resort, return a known public voice id (Rachel)
+        return self._fallback_voice_for(lang)
+
+    def _fallback_voice_for(self, lang: str) -> Optional[str]:
+        """Return a known public ElevenLabs premade voice id as fallback.
+        The multilingual model can speak many languages regardless of the voice name.
+        """
+        # Rachel (public): 21m00Tcm4TlvDq8ikWAM
+        # Other public voices can be added here if needed
+        defaults = {
+            "default": "21m00Tcm4TlvDq8ikWAM",
+            "en": "21m00Tcm4TlvDq8ikWAM",
+            "es": "21m00Tcm4TlvDq8ikWAM",
+            "fr": "21m00Tcm4TlvDq8ikWAM",
+            "de": "21m00Tcm4TlvDq8ikWAM",
+            "it": "21m00Tcm4TlvDq8ikWAM",
+            "pt": "21m00Tcm4TlvDq8ikWAM",
+        }
+        lang_code = (lang or "").split('-')[0].lower()
+        voice_id = defaults.get(lang_code) or defaults["default"]
+        logger.info(f"Using hardcoded fallback voice id for {lang_code}: {voice_id}")
+        return voice_id
     
     async def _synthesize_with_voice(self, text: str, voice_id: str) -> bytes:
         """Synthesize text with specific voice."""
