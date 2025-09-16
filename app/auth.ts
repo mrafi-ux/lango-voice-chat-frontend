@@ -6,6 +6,7 @@ export interface User {
   id: string;
   name: string;
   role: string;
+  gender?: string;
   preferred_lang: string;
   preferred_voice?: string;
   created_at?: string;
@@ -123,9 +124,27 @@ export class AuthService {
   /**
    * Register user (placeholder)
    */
-  async register(userData: Omit<User, 'id'>): Promise<LoginResult> {
-    // Placeholder implementation
-    return { success: false, error: 'Registration not implemented' };
+  async register(userData: {
+    name: string;
+    role: string;
+    preferred_lang: string;
+    preferred_voice?: string;
+    email: string;
+    password: string;
+  }): Promise<LoginResult> {
+    try {
+      const { apiClient } = await import('./api-client');
+      const res = await apiClient.register(userData);
+      if (!res.success || !res.data) {
+        return { success: false, error: res.error || 'Registration failed' };
+      }
+      const { user, token } = res.data;
+      this.setToken(token);
+      this.setCurrentUser(user);
+      return { success: true, user, token };
+    } catch (e) {
+      return { success: false, error: 'Registration failed' };
+    }
   }
   
   /**

@@ -55,6 +55,11 @@ export default function ChatPage() {
   const [isMuted, setIsMuted] = useState(false)
   const [useWebSocketMode, setUseWebSocketMode] = useState(true)
   const [showUserSwitcher, setShowUserSwitcher] = useState(false)
+  const [modelInfo, setModelInfo] = useState<null | {
+    stt: { provider: string; model?: string }
+    tts: { provider: string; model?: string; voice?: string }
+    translation: { provider: string; model?: string }
+  }>(null)
 
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -86,6 +91,11 @@ export default function ChatPage() {
   // Initialize user and load conversations
   useEffect(() => {
     initializeUser()
+    // Also fetch model/provider info for display
+    fetch('/api/v1/capabilities/models')
+      .then(res => res.ok ? res.json() : Promise.reject(new Error('Failed to fetch models')))
+      .then(data => setModelInfo(data))
+      .catch(err => console.warn('Model info load failed:', err))
   }, [])
 
   // Load messages when active conversation changes
@@ -736,7 +746,21 @@ export default function ChatPage() {
                     <br />
                     <strong>Translation:</strong> Automatic
                     <br />
-                    <strong>Voice:</strong> ElevenLabs Premium
+                    <strong>Voice:</strong> {(() => {
+                      const prov = modelInfo?.tts?.provider || 'unknown'
+                      if (prov === 'openai') {
+                        const model = modelInfo?.tts?.model || 'tts-1'
+                        const voice = modelInfo?.tts?.voice ? ` (${modelInfo.tts.voice})` : ''
+                        return `OpenAI ${model}${voice}`
+                      }
+                      if (prov === 'elevenlabs') {
+                        return 'ElevenLabs Premium'
+                      }
+                      if (prov === 'browser') {
+                        return 'Browser TTS'
+                      }
+                      return 'Unknown'
+                    })()}
                     <br />
                     <strong>Mode:</strong> {useWebSocketMode ? 'Real-time' : 'Demo'}
                   </div>
