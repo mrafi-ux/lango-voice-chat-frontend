@@ -293,14 +293,14 @@ async def handle_voice_note_message(message_data: dict) -> None:
             )
             logger.info(f"Voice note delivered to recipient: {message.id}")
         else:
-            # Update status to failed in background
+            # Recipient offline: keep as SENT for later delivery
             schedule_background_task(
                 persistence_worker.update_message_status(
                     message.id, 
-                    MessageStatus.FAILED
+                    MessageStatus.SENT
                 )
             )
-            logger.warning(f"Failed to deliver voice note to recipient: {message.id}")
+            logger.warning(f"Recipient offline; queued voice note for later: {message.id}")
             
         if sent_to_sender:
             logger.info(f"Voice note confirmed to sender: {message.id}")
