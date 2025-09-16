@@ -92,7 +92,13 @@ export default function MessageBubble({
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    // Display time in UTC+5 (Asia/Karachi)
+    return new Intl.DateTimeFormat(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Karachi',
+    }).format(date)
   }
 
   const formatDuration = (seconds?: number) => {

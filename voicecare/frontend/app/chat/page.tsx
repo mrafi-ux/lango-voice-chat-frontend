@@ -308,6 +308,23 @@ export default function ChatPage() {
       }
 
       setMessages(prev => {
+        // If this is our own message, replace the last optimistic temp message instead of duplicating
+        if (user && newMessage.sender_id === user.id) {
+          const idx = [...prev].reverse().findIndex(m => m.sender_id === user.id && m.id.startsWith('temp-') && m.text_source === newMessage.text_source)
+          if (idx !== -1) {
+            const realIdx = prev.length - 1 - idx
+            const existing = prev[realIdx]
+            const merged: Message = {
+              ...newMessage,
+              // Preserve any generated audio/duration from the optimistic message
+              audio_url: existing.audio_url || newMessage.audio_url,
+              duration: existing.duration || newMessage.duration,
+            }
+            const copy = [...prev]
+            copy[realIdx] = merged
+            return copy
+          }
+        }
         console.log(`Adding message to chat: ${newMessage.sender_name} → ${newMessage.text_translated}`)
         return [...prev, newMessage]
       })
@@ -584,7 +601,7 @@ export default function ChatPage() {
                 )
 
                 // Generate TTS for the translated message
-                await generateTTSAudio(tempMessage.id, translatedText, targetLang, true)
+                await generateTTSAudio(translatedText, targetLang, tempMessage.id, true)
               }
             } else {
               console.error('Translation API failed:', translateResponse.status)
@@ -617,9 +634,15 @@ export default function ChatPage() {
       // Generate TTS for this message
       const message = messages.find(msg => msg.id === messageId)
       if (message) {
-        const textToSpeak = message.text_translated || message.text_source
-        const targetLang = message.target_lang
-        generateTTSAudio(textToSpeak, targetLang, messageId, true)
+        // For sender's own message, use original text and source language
+        if (user && message.sender_id === user.id) {
+          generateTTSAudio(message.text_source, message.source_lang, messageId, true)
+        } else {
+          // For recipient, use translated text and target language
+          const textToSpeak = message.text_translated || message.text_source
+          const targetLang = message.target_lang
+          generateTTSAudio(textToSpeak, targetLang, messageId, true)
+        }
       }
     } else {
       // Play existing audio
