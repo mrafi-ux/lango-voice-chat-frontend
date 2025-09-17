@@ -318,6 +318,11 @@ Thumbs.db
 # Kubernetes
 *.kubeconfig
 
+# Test files and directories
+test_apis.py
+voicecare/frontend/app/test-connection/
+start_backend.sh
+
 # Local configuration files
 config.local.*
 settings.local.*
