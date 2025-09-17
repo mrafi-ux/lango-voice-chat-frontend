@@ -22,7 +22,7 @@ interface Message {
   sender_name: string
   sender_role: string
   text_source: string
-  text_translated: string
+  text_translated: string | null
   source_lang: string
   target_lang: string
   status: 'sent' | 'delivered' | 'played'
@@ -266,18 +266,23 @@ export default function ChatPage() {
       if (!res.ok) throw new Error('Failed to load messages')
       const payload = await res.json()
       const apiMessages = (payload.messages || []) as any[]
-      const list: Message[] = apiMessages.map((m) => ({
-        id: m.id,
-        sender_id: m.sender_id,
-        sender_name: m.sender?.name || 'Unknown',
-        sender_role: m.sender?.role || 'user',
-        text_source: m.text_source,
-        text_translated: m.text_translated,
-        source_lang: m.source_lang,
-        target_lang: m.target_lang,
-        status: (m.status || 'sent').toLowerCase(),
-        created_at: m.created_at,
-      }))
+      const list: Message[] = apiMessages.map((m) => {
+        const isOwnMessage = user && m.sender_id === user.id
+        return {
+          id: m.id,
+          sender_id: m.sender_id,
+          sender_name: m.sender?.name || 'Unknown',
+          sender_role: m.sender?.role || 'user',
+          text_source: m.text_source,
+          // For sender's own messages, don't show translated text
+          // For received messages, show translated text
+          text_translated: isOwnMessage ? null : m.text_translated,
+          source_lang: m.source_lang,
+          target_lang: m.target_lang,
+          status: (m.status || 'sent').toLowerCase(),
+          created_at: m.created_at,
+        }
+      })
       setMessages(list)
     } catch (error) {
       console.error('Failed to load messages:', error)
@@ -293,13 +298,16 @@ export default function ChatPage() {
       console.log(`Message from ${message.message.sender?.name}: "${message.message.text_source}" → "${message.message.text_translated}"`)
       console.log(`Language: ${message.message.source_lang} → ${message.message.target_lang}`)
       
+      const isOwnMessage = user && message.message.sender_id === user.id
       const newMessage: Message = {
         id: message.message.id,
         sender_id: message.message.sender_id,
         sender_name: message.message.sender?.name || 'Unknown',
         sender_role: message.message.sender?.role || 'user',
         text_source: message.message.text_source,
-        text_translated: message.message.text_translated,
+        // For sender's own messages, don't show translated text
+        // For received messages, show translated text
+        text_translated: isOwnMessage ? null : message.message.text_translated,
         source_lang: message.message.source_lang,
         target_lang: message.message.target_lang,
         status: 'delivered',
@@ -485,7 +493,8 @@ export default function ChatPage() {
       // Step 1: Transcribe audio using STT
       const formData = new FormData()
       formData.append('audio', audioBlob, 'recording.webm')
-      // Do not send a language hint; let the backend auto-detect
+      // Send user's preferred language as hint for better detection
+      formData.append('language', user.preferred_lang)
 
       const sttResponse = await fetch('/api/v1/stt/transcribe', {
         method: 'POST',
@@ -534,7 +543,7 @@ export default function ChatPage() {
         sender_name: user.name,
         sender_role: user.role,
         text_source: transcribedText,
-        text_translated: transcribedText, // Will be updated when translation comes back
+        text_translated: null, // Sender sees original text only
         source_lang: detectedLang,
         target_lang: targetLang,
         status: 'sent',
@@ -591,23 +600,22 @@ export default function ChatPage() {
               
               if (translateResult.error) {
                 console.error('Translation error:', translateResult.error)
-                // Fallback to original text if translation fails
-                const fallbackText = `[Translation failed] ${transcribedText}`
+                // Fallback to original text if translation fails (sender still sees original)
                 setMessages(prev => 
                   prev.map(msg => 
                     msg.id === tempMessage.id 
-                      ? { ...msg, text_translated: fallbackText, status: 'delivered' as const }
+                      ? { ...msg, text_translated: null, status: 'delivered' as const } // Sender sees original text only
                       : msg
                   )
                 )
               } else {
                 const translatedText = translateResult.translatedText
 
-                // Update the message with translation
+                // Update the message with translation (but sender still sees original text)
                 setMessages(prev => 
                   prev.map(msg => 
                     msg.id === tempMessage.id 
-                      ? { ...msg, text_translated: translatedText, status: 'delivered' as const }
+                      ? { ...msg, text_translated: null, status: 'delivered' as const } // Sender sees original text only
                       : msg
                   )
                 )
@@ -617,12 +625,11 @@ export default function ChatPage() {
               }
             } else {
               console.error('Translation API failed:', translateResponse.status)
-              // Fallback to original text
-              const fallbackText = `[Translation unavailable] ${transcribedText}`
+              // Fallback to original text (sender still sees original)
               setMessages(prev => 
                 prev.map(msg => 
                   msg.id === tempMessage.id 
-                    ? { ...msg, text_translated: fallbackText, status: 'delivered' as const }
+                    ? { ...msg, text_translated: null, status: 'delivered' as const } // Sender sees original text only
                     : msg
                 )
               )
