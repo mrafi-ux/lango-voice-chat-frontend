@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Mic, Square, Loader2 } from 'lucide-react'
 
 interface AudioRecorderProps {
@@ -16,6 +16,7 @@ export default function AudioRecorder({
   onRecordingStart,
   onRecordingStop,
   maxDuration = 120,
+  minDuration = 0.5, // Minimum 0.5 seconds for ElevenLabs STT
   disabled = false
 }: AudioRecorderProps) {
   const [isRecording, setIsRecording] = useState(false)
@@ -30,7 +31,10 @@ export default function AudioRecorder({
   const startTimeRef = useRef<number>(0)
 
   const startRecording = useCallback(async () => {
-    if (disabled || isRecording) return
+    if (disabled || isRecording) {
+      console.log('Recording already in progress or disabled')
+      return
+    }
 
     setIsInitializing(true)
     setError('')
@@ -68,6 +72,13 @@ export default function AudioRecorder({
           type: 'audio/webm;codecs=opus' 
         })
         const recordingDuration = duration
+        
+        // Check minimum duration
+        if (recordingDuration < minDuration) {
+          setError(`Please record for at least ${minDuration} seconds`)
+          cleanup()
+          return
+        }
         
         onRecordingComplete(audioBlob, recordingDuration)
         cleanup()
@@ -108,6 +119,8 @@ export default function AudioRecorder({
   }, [isRecording, onRecordingStop])
 
   const cleanup = useCallback(() => {
+    console.log('Cleaning up audio recorder')
+    
     if (timerRef.current) {
       clearInterval(timerRef.current)
       timerRef.current = null
@@ -118,9 +131,15 @@ export default function AudioRecorder({
       streamRef.current = null
     }
 
-    mediaRecorderRef.current = null
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current = null
+    }
+    
+    chunksRef.current = []
     setDuration(0)
     setError('')
+    setIsRecording(false)
+    setIsInitializing(false)
   }, [])
 
   const formatDuration = (seconds: number) => {
@@ -128,6 +147,13 @@ export default function AudioRecorder({
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanup()
+    }
+  }, [cleanup])
 
   return (
     <div className="flex items-center space-x-4">
@@ -166,6 +192,11 @@ export default function AudioRecorder({
             <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
             <span className="text-white font-medium">
               {isInitializing ? 'Initializing...' : formatDuration(duration)}
+              {isRecording && duration < minDuration && (
+                <span className="text-yellow-300 text-xs ml-1">
+                  (min {minDuration}s)
+                </span>
+              )}
             </span>
           </div>
           {isRecording && (

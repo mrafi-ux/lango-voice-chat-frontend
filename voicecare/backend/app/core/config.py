@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     
     # STT Configuration
     stt_provider: str = "elevenlabs"  # options: elevenlabs, openai, whisper
+    stt_fallback_enabled: bool = True
     whisper_model: str = "tiny"  # Changed from "small" to "tiny" for better reliability
     whisper_compute: str = "cpu"
     whisper_beam_size: int = 1
@@ -39,17 +40,21 @@ class Settings(BaseSettings):
     
     # TTS Configuration
     tts_provider: str = "elevenlabs"  # options: elevenlabs, openai, browser
+    
+    # Translation Configuration
+    translation_provider: str = "libre"  # options: libre, openai
+    openai_translate_model: str = "gpt-4o"
     piper_voices_dir: str = "./voices/piper"
-    elevenlabs_api_key: Optional[str] = None
+    elevenlabs_api_key: Optional[str] = None  # Set your valid API key here
     openai_tts_model: str = "tts-1"
     openai_tts_voice: str = "alloy"
     
+    # Authentication
+    auth_secret_key: str = "your-secret-key-change-in-production"
+    auth_token_expire_minutes: int = 60 * 24 * 7  # 7 days
+    
     # Logging
     log_level: str = "INFO"
-
-    # Auth
-    auth_secret_key: str = "change-me"
-    auth_token_expire_minutes: int = 60
 
     # Translation
     # 'auto' uses OpenAI if either STT or TTS is set to OpenAI; otherwise uses 'libre'
@@ -63,9 +68,17 @@ class Settings(BaseSettings):
             return json.loads(self.cors_origins)
         except json.JSONDecodeError:
             return ["http://localhost:3000"]
+    
+    @property
+    def translation_provider_effective(self) -> str:
+        """Get effective translation provider based on STT provider."""
+        if self.stt_provider == "openai" and self.openai_api_key:
+            return "openai"
+        return self.translation_provider
 
     class Config:
         env_file = ".env"
+        env_file_encoding = "utf-8"
         case_sensitive = False
 
     @property

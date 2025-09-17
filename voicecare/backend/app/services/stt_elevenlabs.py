@@ -33,6 +33,12 @@ class ElevenLabsSTTService:
             logger.error("ELEVENLABS_API_KEY missing in configuration")
             return {"text": "", "language": language or "en", "error": "ElevenLabs API key not configured"}
 
+        # Check minimum duration for ElevenLabs STT (approximately 0.5 seconds)
+        # WebM/Opus at 16kHz typically needs ~6000 bytes for 0.5 seconds
+        if len(audio_data) < 6000:
+            logger.info(f"Audio too short for ElevenLabs STT ({len(audio_data)} bytes), skipping")
+            return {"text": "", "language": language or "en", "error": "Audio too short"}
+
         try:
             # Prepare multipart form
             headers = {
@@ -49,8 +55,15 @@ class ElevenLabsSTTService:
 
             # Use a single shared AsyncClient for the request
             async with httpx.AsyncClient(timeout=60) as client:
+                # ElevenLabs STT works best with MP3/WAV, but we'll try WebM first since that's what frontend sends
                 files = {'file': ('audio.webm', audio_data, 'audio/webm')}
                 resp = await client.post(self.endpoint, headers=headers, data=form_data, files=files)
+                
+                # If WebM fails, try MP3 format
+                if resp.status_code >= 400 and 'webm' in str(resp.text).lower():
+                    logger.info("WebM format failed, trying MP3 format")
+                    files = {'file': ('audio.mp3', audio_data, 'audio/mpeg')}
+                    resp = await client.post(self.endpoint, headers=headers, data=form_data, files=files)
 
             if resp.status_code >= 400:
                 logger.error(f"ElevenLabs STT error {resp.status_code}: {resp.text}")
@@ -62,6 +75,15 @@ class ElevenLabsSTTService:
             text = data.get('text') or data.get('transcript') or data.get('content') or ''
             detected_lang = data.get('language') or lang
             confidence = data.get('confidence') or None
+            
+            # Debug logging for ElevenLabs response
+            logger.info(f"ElevenLabs STT response keys: {list(data.keys())}")
+            logger.info(f"ElevenLabs STT raw response: {data}")
+
+            # Check if we got empty text - this might indicate an issue
+            if not text or not text.strip():
+                logger.warning(f"ElevenLabs STT returned empty text. Response: {data}")
+                return {"text": "", "language": lang, "error": "Empty transcription"}
 
             logger.info(f"ElevenLabs STT transcription: '{text[:100]}...' (lang: {detected_lang})")
 

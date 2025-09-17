@@ -59,30 +59,55 @@ async def transcribe_audio(
         # Choose provider
         result = None
         provider = settings.stt_provider or "whisper"
+        fallback_enabled = getattr(settings, 'stt_fallback_enabled', True)
+        logger.info(f"STT provider selected: {provider} (fallback_enabled={fallback_enabled})")
+        logger.info(f"Processing STT request for audio size: {len(audio_data)} bytes")
+
+        async def retry_auto_if_empty(current_provider: str, current_result: Dict[str, Any]):
+            # Don't retry if there's an error or if we have text
+            if current_result.get("error") or (current_result.get("text") or "").strip():
+                return current_result
+            logger.info(f"STT empty text on {current_provider}; retrying with auto language")
+            if current_provider == "elevenlabs":
+                return await elevenlabs_stt_service.transcribe_audio(audio_data, None)
+            if current_provider == "openai":
+                return await openai_stt_service.transcribe_audio(audio_data, None)
+            return await whisper_stt_service.transcribe_audio(audio_data, None)
 
         try:
             if provider == "elevenlabs":
                 result = await elevenlabs_stt_service.transcribe_audio(audio_data, language)
-                if "error" in result and result["error"]:
-                    logger.warning(f"ElevenLabs STT failed: {result['error']}, falling back to Whisper")
+                logger.info(f"ElevenLabs STT result: {result}")
+                result = await retry_auto_if_empty("elevenlabs", result)
+                logger.info(f"ElevenLabs STT after retry: {result}")
+                if fallback_enabled and ("error" in result and result["error"] or not (result.get("text") or "").strip()):
+                    logger.warning(f"ElevenLabs STT failed/empty -> fallback to Whisper")
                     provider = "whisper"
                     result = await whisper_stt_service.transcribe_audio(audio_data, language)
+                    result = await retry_auto_if_empty("whisper", result)
             elif provider == "openai":
                 result = await openai_stt_service.transcribe_audio(audio_data, language)
-                if "error" in result and result["error"]:
-                    logger.warning(f"OpenAI STT failed: {result['error']}, falling back to ElevenLabs")
+                result = await retry_auto_if_empty("openai", result)
+                if fallback_enabled and ("error" in result and result["error"] or not (result.get("text") or "").strip()):
+                    logger.warning(f"OpenAI STT failed/empty -> fallback to ElevenLabs")
                     provider = "elevenlabs"
                     result = await elevenlabs_stt_service.transcribe_audio(audio_data, language)
+                    result = await retry_auto_if_empty("elevenlabs", result)
             else:
                 result = await whisper_stt_service.transcribe_audio(audio_data, language)
-                if "error" in result and result["error"]:
-                    logger.warning(f"Whisper STT failed: {result['error']}, falling back to ElevenLabs")
+                result = await retry_auto_if_empty("whisper", result)
+                if fallback_enabled and ("error" in result and result["error"] or not (result.get("text") or "").strip()):
+                    logger.warning(f"Whisper STT failed/empty -> fallback to ElevenLabs")
                     provider = "elevenlabs"
                     result = await elevenlabs_stt_service.transcribe_audio(audio_data, language)
+                    result = await retry_auto_if_empty("elevenlabs", result)
 
             # Final fallback to mock if still failing
-            if "error" in result and result["error"]:
-                logger.warning(f"Primary STT failed: {result['error']}, falling back to mock")
+            if ("error" in result and result["error"]) or not (result.get("text") or "").strip():
+                if not fallback_enabled:
+                    logger.error("STT returned error/empty and fallback disabled")
+                    return STTResponse(text="", language=language or "en", provider=provider, error=result.get("error") or "No speech detected")
+                logger.warning(f"Primary STT failed/empty, falling back to mock")
                 provider = "mock"
                 result = await mock_stt_service.transcribe_audio(audio_data, language)
 
@@ -103,6 +128,7 @@ async def transcribe_audio(
         
         # Successful transcription
         logger.info(f"STT transcription successful ({provider}): '{result['text'][:100]}...' (lang: {result['language']})")
+        logger.info(f"STT processing completed. Provider: {provider}, Text length: {len(result.get('text', ''))}")
         
         return STTResponse(
             text=result["text"],

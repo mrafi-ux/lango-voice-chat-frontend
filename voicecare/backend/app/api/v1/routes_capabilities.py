@@ -17,9 +17,14 @@ router = APIRouter()
 async def get_language_capabilities() -> Dict[str, Any]:
     """Get supported languages for all services."""
     try:
-        # Try Whisper first, fallback to mock
+        # Get STT languages based on configured provider
         try:
-            stt_languages = whisper_stt_service.get_supported_languages()
+            if settings.stt_provider == "elevenlabs":
+                stt_languages = ["en", "es", "fr", "de", "it", "pt", "ru", "ja", "ko", "zh", "ar", "hi"]  # ElevenLabs supported languages
+            elif settings.stt_provider == "openai":
+                stt_languages = ["en", "es", "fr", "de", "it", "pt", "ru", "ja", "ko", "zh", "ar", "hi", "tr", "pl", "nl"]  # OpenAI Whisper supported languages
+            else:  # whisper
+                stt_languages = whisper_stt_service.get_supported_languages()
         except Exception:
             stt_languages = mock_stt_service.get_supported_languages()
         
@@ -142,3 +147,26 @@ async def translate_text(request: Dict[str, Any]) -> Dict[str, Any]:
         }
     except Exception as e:
         return {"error": str(e)} 
+
+
+@router.get("/elevenlabs/validate")
+async def validate_elevenlabs() -> Dict[str, Any]:
+    """Validate ElevenLabs configuration and API key.
+
+    Returns booleans for key presence and API availability to help debug 401 issues.
+    """
+    try:
+        key_present = bool(getattr(settings, "elevenlabs_api_key", None))
+        available = await elevenlabs_tts_service.check_elevenlabs_available()
+        return {
+            "key_present": key_present,
+            "tts_available": available,
+            "stt_model": getattr(settings, "elevenlabs_stt_model", None),
+            "notes": "tts_available checks /v1/voices with provided API key"
+        }
+    except Exception as e:
+        return {
+            "key_present": bool(getattr(settings, "elevenlabs_api_key", None)),
+            "tts_available": False,
+            "error": str(e)
+        }

@@ -466,14 +466,26 @@ export default function ChatPage() {
   const handleRecordingComplete = async (audioBlob: Blob, duration: number) => {
     if (!user || !activeConversation) return
 
+    // Prevent multiple simultaneous transcriptions
+    if (isTranscribing) {
+      console.log('Already transcribing, ignoring new recording')
+      return
+    }
+
     setIsTranscribing(true)
     setError('')
+
+    // Set a timeout to ensure transcribing state is reset
+    const transcribingTimeout = setTimeout(() => {
+      console.log('Transcribing timeout - resetting state')
+      setIsTranscribing(false)
+    }, 30000) // 30 second timeout
 
     try {
       // Step 1: Transcribe audio using STT
       const formData = new FormData()
       formData.append('audio', audioBlob, 'recording.webm')
-      formData.append('language', user.preferred_lang)
+      // Do not send a language hint; let the backend auto-detect
 
       const sttResponse = await fetch('/api/v1/stt/transcribe', {
         method: 'POST',
@@ -625,6 +637,7 @@ export default function ChatPage() {
       console.error('Failed to process voice message:', error)
       setError(error instanceof Error ? error.message : 'Failed to send voice message')
     } finally {
+      clearTimeout(transcribingTimeout)
       setIsTranscribing(false)
     }
   }
@@ -936,9 +949,15 @@ export default function ChatPage() {
             ) : (
               <AudioRecorder
                 onRecordingComplete={handleRecordingComplete}
-                onRecordingStart={() => setIsRecording(true)}
-                onRecordingStop={() => setIsRecording(false)}
-                disabled={!activeConversation}
+                onRecordingStart={() => {
+                  console.log('Recording started')
+                  setIsRecording(true)
+                }}
+                onRecordingStop={() => {
+                  console.log('Recording stopped')
+                  setIsRecording(false)
+                }}
+                disabled={!activeConversation || isTranscribing}
                 maxDuration={120}
               />
             )}

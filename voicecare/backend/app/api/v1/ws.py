@@ -119,7 +119,9 @@ async def handle_websocket(websocket: WebSocket, connection_id: str) -> None:
                     await manager.broadcast_presence()
                     
                 elif message_type == "voice_note":
+                    logger.info(f"Processing voice note message from user {current_user_id}")
                     await handle_voice_note_message(message_data)
+                    logger.info(f"Voice note message processing completed for user {current_user_id}")
                     
                 else:
                     error_msg = WSErrorResponse(

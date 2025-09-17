@@ -72,6 +72,11 @@ def _b64url_decode(data: str) -> bytes:
     return base64.urlsafe_b64decode(data + padding)
 
 
+def create_access_token(user_id: str, *, expires_minutes: int | None = None) -> str:
+    """Create a JWT access token for the given user ID."""
+    return create_token(user_id, expires_minutes=expires_minutes)
+
+
 def create_token(user_id: str, *, expires_minutes: int | None = None) -> str:
     """Create a signed token for the given user ID."""
     if expires_minutes is None:

@@ -76,11 +76,17 @@ async def synthesize_speech(request: TTSRequest) -> TTSResponse:
         logger.info(f"TTS synthesis: '{request.text[:50]}...' in {request.lang}")
         
         # Choose provider based on configuration
-        if settings.tts_provider == "elevenlabs":
+        if settings.tts_provider == "elevenlabs" and settings.elevenlabs_api_key:
             audio_bytes, content_type, needs_fallback = await elevenlabs_tts_service.synthesize_elevenlabs(
                 request.text, request.lang, request.voice_hint
             )
             provider = "elevenlabs"
+        elif settings.tts_provider == "elevenlabs" and not settings.elevenlabs_api_key:
+            logger.warning("ElevenLabs TTS requested but API key not available, falling back to OpenAI")
+            audio_bytes, content_type, needs_fallback = await openai_tts_service.synthesize(
+                request.text, request.lang, request.voice_hint
+            )
+            provider = "openai"
         elif settings.tts_provider == "openai":
             audio_bytes, content_type, needs_fallback = await openai_tts_service.synthesize(
                 request.text, request.lang, request.voice_hint

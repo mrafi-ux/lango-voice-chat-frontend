@@ -41,6 +41,10 @@ class ElevenLabsTTSService:
                     data = response.json()
                     self.voices_cache = data.get("voices", [])
                     logger.info(f"Loaded {len(self.voices_cache)} ElevenLabs voices")
+                elif response.status_code == 401:
+                    logger.warning("ElevenLabs API key invalid - disabling ElevenLabs TTS")
+                    self.voices_cache = []
+                    # Don't clear the API key here as it might be valid for other operations
                 else:
                     logger.error(f"Failed to load ElevenLabs voices: {response.status_code}")
                     self.voices_cache = []
