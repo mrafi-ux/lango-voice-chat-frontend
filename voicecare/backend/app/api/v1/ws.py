@@ -14,10 +14,12 @@ from ...db.schemas import (
     WSPresenceResponse, WSErrorResponse, MessageCreate, MessageResponse
 )
 from ...db.models import MessageStatus, Message
-from ...services.translate_libre import translate_service
+from ...services.translate_libre import translate_service as libre_translate_service
+from ...services.translate_openai import openai_translation_service
 from ...services.metrics import metrics_service
 from ...workers.persist import schedule_background_task, persistence_worker
 from ...core.logging import get_logger
+from ...core.config import settings
 
 logger = get_logger(__name__)
 
@@ -117,7 +119,9 @@ async def handle_websocket(websocket: WebSocket, connection_id: str) -> None:
                     await manager.broadcast_presence()
                     
                 elif message_type == "voice_note":
+                    logger.info(f"Processing voice note message from user {current_user_id}")
                     await handle_voice_note_message(message_data)
+                    logger.info(f"Voice note message processing completed for user {current_user_id}")
                     
                 else:
                     error_msg = WSErrorResponse(
@@ -211,11 +215,19 @@ async def handle_voice_note_message(message_data: dict) -> None:
             )
         
         # Translate text (outside DB transaction for speed)
-        translated_text = await translate_service.translate(
-            voice_note.text_source,
-            voice_note.source_lang,
-            voice_note.target_lang
-        )
+        # Translate text using configured provider
+        if settings.translation_provider_effective == "openai":
+            translated_text = await openai_translation_service.translate(
+                voice_note.text_source,
+                voice_note.source_lang,
+                voice_note.target_lang
+            )
+        else:
+            translated_text = await libre_translate_service.translate(
+                voice_note.text_source,
+                voice_note.source_lang,
+                voice_note.target_lang
+            )
         
         # Record translation completion
         metrics_service.record_translation_completed(message.id)
@@ -283,14 +295,14 @@ async def handle_voice_note_message(message_data: dict) -> None:
             )
             logger.info(f"Voice note delivered to recipient: {message.id}")
         else:
-            # Update status to failed in background
+            # Recipient offline: keep as SENT for later delivery
             schedule_background_task(
                 persistence_worker.update_message_status(
                     message.id, 
-                    MessageStatus.FAILED
+                    MessageStatus.SENT
                 )
             )
-            logger.warning(f"Failed to deliver voice note to recipient: {message.id}")
+            logger.warning(f"Recipient offline; queued voice note for later: {message.id}")
             
         if sent_to_sender:
             logger.info(f"Voice note confirmed to sender: {message.id}")

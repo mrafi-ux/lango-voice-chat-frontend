@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, desc
 from sqlalchemy.orm import selectinload
 
-from .models import User, Conversation, Message, MessageStatus
+from .models import User, Conversation, Message, MessageStatus, UserProfile
 from .schemas import UserCreate, MessageCreate
 from ..core.security import generate_user_id, generate_conversation_id, generate_message_id
 
@@ -22,6 +22,7 @@ class UserCRUD:
             id=generate_user_id(),
             name=user_data.name,
             role=user_data.role,
+            gender=getattr(user_data, 'gender', None),
             preferred_lang=user_data.preferred_lang,
             preferred_voice=user_data.preferred_voice
         )
@@ -41,6 +42,14 @@ class UserCRUD:
         """Get all users."""
         result = await session.execute(select(User).order_by(User.created_at.desc()))
         return list(result.scalars().all())
+
+    @staticmethod
+    async def get_by_email(session: AsyncSession, email: str) -> Optional[User]:
+        """Get user by email via profile relation."""
+        result = await session.execute(
+            select(User).join(UserProfile).where(UserProfile.email == email)
+        )
+        return result.scalar_one_or_none()
 
 
 class ConversationCRUD:
@@ -198,3 +207,23 @@ class MessageCRUD:
 user_crud = UserCRUD()
 conversation_crud = ConversationCRUD()
 message_crud = MessageCRUD()
+
+
+class UserProfileCRUD:
+    """CRUD operations for UserProfile model."""
+
+    @staticmethod
+    async def get_by_email(session: AsyncSession, email: str) -> Optional[UserProfile]:
+        result = await session.execute(select(UserProfile).where(UserProfile.email == email))
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def create(session: AsyncSession, user_id: str, email: str, password_hash: str) -> UserProfile:
+        profile = UserProfile(user_id=user_id, email=email, password_hash=password_hash)
+        session.add(profile)
+        await session.commit()
+        await session.refresh(profile)
+        return profile
+
+
+user_profile_crud = UserProfileCRUD()

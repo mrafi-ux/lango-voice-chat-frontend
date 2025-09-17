@@ -129,26 +129,46 @@ class WhisperSTTService:
             logger.info(f"Starting Whisper transcription with language hint: {language}")
             logger.info(f"Audio file size: {os.path.getsize(audio_path)} bytes")
             
-            # Transcribe with more lenient settings
+            # Transcribe with safer decoding settings to avoid repetitions
             segments, info = self.model.transcribe(
                 audio_path,
                 language=language,
-                beam_size=beam_size,
+                beam_size=max(beam_size, 3),
                 temperature=temperature,
                 no_speech_threshold=no_speech_threshold,
-                vad_filter=False,  # Disable VAD filter to be more lenient
+                vad_filter=True,  # Use VAD to trim silences that can cause repeats
                 word_timestamps=False,
-                condition_on_previous_text=False
+                condition_on_previous_text=True
             )
             
             # Combine all segments
             text_parts = []
+            last_clean = ""
             segment_count = 0
             for segment in segments:
                 segment_count += 1
                 logger.info(f"Segment {segment_count}: '{segment.text}' (confidence: {getattr(segment, 'avg_logprob', 'N/A')})")
                 if segment.text.strip():
-                    text_parts.append(segment.text.strip())
+                    current = segment.text.strip()
+                    # Drop exact duplicates or short loops like "How are you? How are you?"
+                    if current == last_clean:
+                        continue
+                    # Simple dedupe of repeated bigrams within the segment
+                    words = current.split()
+                    if len(words) > 6:
+                        deduped_words = []
+                        seen_bigrams = set()
+                        for i, w in enumerate(words):
+                            deduped_words.append(w)
+                            if i > 0:
+                                bigram = (words[i-1].lower(), w.lower())
+                                if bigram in seen_bigrams:
+                                    # truncate on repeat loop
+                                    current = " ".join(deduped_words)
+                                    break
+                                seen_bigrams.add(bigram)
+                    text_parts.append(current)
+                    last_clean = current
             
             text = " ".join(text_parts)
             
@@ -163,19 +183,22 @@ class WhisperSTTService:
                 segments, info = self.model.transcribe(
                     audio_path,
                     language=None,  # Auto-detect
-                    beam_size=1,
-                    temperature=0.8,  # Higher temperature for more creative transcription
+                    beam_size=3,
+                    temperature=0.2,  # Lower temp to avoid hallucinations
                     no_speech_threshold=0.1,  # Very low threshold
-                    vad_filter=False,
-                    suppress_blank=False,
-                    suppress_tokens=[]
+                    vad_filter=True
                 )
                 
                 text_parts = []
+                last_clean = ""
                 for segment in segments:
                     logger.info(f"Lenient segment: '{segment.text}'")
                     if segment.text.strip():
-                        text_parts.append(segment.text.strip())
+                        current = segment.text.strip()
+                        if current == last_clean:
+                            continue
+                        text_parts.append(current)
+                        last_clean = current
                 
                 text = " ".join(text_parts)
                 

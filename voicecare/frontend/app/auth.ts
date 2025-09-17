@@ -6,6 +6,7 @@ export interface User {
   id: string;
   name: string;
   role: string;
+  gender?: string;
   preferred_lang: string;
   preferred_voice?: string;
   created_at?: string;
@@ -97,23 +98,30 @@ export class AuthService {
    */
   async login(userId: string, password: string): Promise<LoginResult> {
     try {
-      // For demo purposes, we'll create a mock user based on the ID
-      // In a real app, this would make an API call
+      // Demo users first
       const demoUsers: Record<string, User> = {
         '1': { id: '1', name: 'Admin User', role: 'admin', preferred_lang: 'en' },
         '2': { id: '2', name: 'Ana Rodriguez', role: 'patient', preferred_lang: 'es' },
         '3': { id: '3', name: 'Ben Smith', role: 'nurse', preferred_lang: 'en' }
       };
-      
-      const user = demoUsers[userId];
-      if (!user) {
-        return { success: false, error: 'User not found' };
+      if (demoUsers[userId]) {
+        const user = demoUsers[userId];
+        const token = `demo-token-${userId}`;
+        this.setToken(token);
+        this.setCurrentUser(user);
+        return { success: true, user, token };
       }
-      
+
+      // Fallback: fetch real user by ID from backend and set a demo token
+      const { apiClient } = await import('./api-client');
+      const res = await apiClient.getUser(userId);
+      if (!res.success || !res.data) {
+        return { success: false, error: res.error || 'User not found' };
+      }
+      const user = res.data;
       const token = `demo-token-${userId}`;
       this.setToken(token);
       this.setCurrentUser(user);
-      
       return { success: true, user, token };
     } catch (error) {
       return { success: false, error: 'Login failed' };
@@ -123,9 +131,27 @@ export class AuthService {
   /**
    * Register user (placeholder)
    */
-  async register(userData: Omit<User, 'id'>): Promise<LoginResult> {
-    // Placeholder implementation
-    return { success: false, error: 'Registration not implemented' };
+  async register(userData: {
+    name: string;
+    role: string;
+    preferred_lang: string;
+    preferred_voice?: string;
+    email: string;
+    password: string;
+  }): Promise<LoginResult> {
+    try {
+      const { apiClient } = await import('./api-client');
+      const res = await apiClient.register(userData);
+      if (!res.success || !res.data) {
+        return { success: false, error: res.error || 'Registration failed' };
+      }
+      const { user, token } = res.data;
+      this.setToken(token);
+      this.setCurrentUser(user);
+      return { success: true, user, token };
+    } catch (e) {
+      return { success: false, error: 'Registration failed' };
+    }
   }
   
   /**

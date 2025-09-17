@@ -34,12 +34,28 @@ class User(Base):
     id = Column(String, primary_key=True)
     name = Column(String(100), nullable=False)
     role = Column(SQLEnum(UserRole), nullable=False)
+    gender = Column(String(20), nullable=True)
     preferred_lang = Column(String(5), nullable=False)  # BCP-47 format
     preferred_voice = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
     sent_messages = relationship("Message", back_populates="sender", foreign_keys="Message.sender_id")
+    profile = relationship("UserProfile", back_populates="user", uselist=False)
+
+
+class UserProfile(Base):
+    """Authentication profile for a user (email + password)."""
+    __tablename__ = "user_profile"
+
+    # Use user_id as the primary key for 1:1 relation
+    user_id = Column(String, ForeignKey("user.id"), primary_key=True)
+    email = Column(String(255), unique=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationship
+    user = relationship("User", back_populates="profile", uselist=False)
 
 
 class Conversation(Base):

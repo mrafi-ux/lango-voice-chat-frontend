@@ -138,10 +138,13 @@ export class ApiClient {
   async register(userData: {
     name: string;
     role: string;
+    gender?: string;
     preferred_lang: string;
     preferred_voice?: string;
-  }): Promise<ApiResponse<User>> {
-    return this.request<User>('/v1/users/', {
+    email: string;
+    password: string;
+  }): Promise<ApiResponse<{ user: User; token: string }>> {
+    return this.request<{ user: User; token: string }>('/v1/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
@@ -176,6 +179,13 @@ export class ApiClient {
    */
   async getUsers(): Promise<ApiResponse<User[]>> {
     return this.request<User[]>('/v1/users/');
+  }
+
+  /**
+   * Get a user by id
+   */
+  async getUser(userId: string): Promise<ApiResponse<User>> {
+    return this.request<User>(`/v1/users/${userId}`);
   }
   
   /**
@@ -229,7 +239,12 @@ export class ApiClient {
    * Get messages for a conversation
    */
   async getMessages(conversationId: string): Promise<ApiResponse<Message[]>> {
-    return this.request<Message[]>(`/v1/conversations/${conversationId}/messages`);
+    // Backend endpoint is /api/v1/messages/{conversation_id}
+    return this.request<{ messages: Message[] }>(`/v1/messages/${conversationId}`).then(res => {
+      if (!res.success || !res.data) return { success: false, error: res.error || 'Failed to load messages' };
+      // Normalize
+      return { success: true, data: res.data.messages as any };
+    });
   }
   
   // STT endpoints

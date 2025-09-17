@@ -55,6 +55,13 @@ export default function ChatPage() {
   const [isMuted, setIsMuted] = useState(false)
   const [useWebSocketMode, setUseWebSocketMode] = useState(true)
   const [showUserSwitcher, setShowUserSwitcher] = useState(false)
+  const [showStartChat, setShowStartChat] = useState(false)
+  const [availableUsers, setAvailableUsers] = useState<User[]>([])
+  const [modelInfo, setModelInfo] = useState<null | {
+    stt: { provider: string; model?: string }
+    tts: { provider: string; model?: string; voice?: string }
+    translation: { provider: string; model?: string }
+  }>(null)
 
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -86,6 +93,11 @@ export default function ChatPage() {
   // Initialize user and load conversations
   useEffect(() => {
     initializeUser()
+    // Also fetch model/provider info for display
+    fetch('/api/v1/capabilities/models')
+      .then(res => res.ok ? res.json() : Promise.reject(new Error('Failed to fetch models')))
+      .then(data => setModelInfo(data))
+      .catch(err => console.warn('Model info load failed:', err))
   }, [])
 
   // Load messages when active conversation changes
@@ -123,7 +135,10 @@ export default function ChatPage() {
 
       const parsedUser = JSON.parse(userData)
       setUser(parsedUser)
-      
+
+      // Load list of users for switcher (exclude current user)
+      await loadAvailableUsers(parsedUser.id)
+
       await loadConversations(parsedUser.id)
     } catch (error) {
       console.error('Failed to initialize user:', error)
@@ -132,6 +147,23 @@ export default function ChatPage() {
       router.push('/auth/login')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadAvailableUsers = async (currentUserId: string) => {
+    try {
+      const res = await fetch('/api/v1/users/')
+      if (!res.ok) throw new Error('Failed to load users')
+      const users: User[] = await res.json()
+      const others = users.filter(u => u.id !== currentUserId)
+      setAvailableUsers(others)
+    } catch (e) {
+      // Fallback to demo users
+      const fallback: User[] = [
+        { id: '2', name: 'Ana Rodriguez', role: 'patient', preferred_lang: 'es' },
+        { id: '3', name: 'Ben Smith', role: 'nurse', preferred_lang: 'en' }
+      ].filter(u => u.id !== currentUserId)
+      setAvailableUsers(fallback)
     }
   }
 
@@ -230,9 +262,23 @@ export default function ChatPage() {
 
   const loadMessages = async (conversationId: string) => {
     try {
-      // Mock messages for demo
-      const mockMessages: Message[] = []
-      setMessages(mockMessages)
+      const res = await fetch(`/api/v1/messages/${conversationId}`)
+      if (!res.ok) throw new Error('Failed to load messages')
+      const payload = await res.json()
+      const apiMessages = (payload.messages || []) as any[]
+      const list: Message[] = apiMessages.map((m) => ({
+        id: m.id,
+        sender_id: m.sender_id,
+        sender_name: m.sender?.name || 'Unknown',
+        sender_role: m.sender?.role || 'user',
+        text_source: m.text_source,
+        text_translated: m.text_translated,
+        source_lang: m.source_lang,
+        target_lang: m.target_lang,
+        status: (m.status || 'sent').toLowerCase(),
+        created_at: m.created_at,
+      }))
+      setMessages(list)
     } catch (error) {
       console.error('Failed to load messages:', error)
       setError('Failed to load messages')
@@ -262,6 +308,23 @@ export default function ChatPage() {
       }
 
       setMessages(prev => {
+        // If this is our own message, replace the last optimistic temp message instead of duplicating
+        if (user && newMessage.sender_id === user.id) {
+          const idx = [...prev].reverse().findIndex(m => m.sender_id === user.id && m.id.startsWith('temp-') && m.text_source === newMessage.text_source)
+          if (idx !== -1) {
+            const realIdx = prev.length - 1 - idx
+            const existing = prev[realIdx]
+            const merged: Message = {
+              ...newMessage,
+              // Preserve any generated audio/duration from the optimistic message
+              audio_url: existing.audio_url || newMessage.audio_url,
+              duration: existing.duration || newMessage.duration,
+            }
+            const copy = [...prev]
+            copy[realIdx] = merged
+            return copy
+          }
+        }
         console.log(`Adding message to chat: ${newMessage.sender_name} → ${newMessage.text_translated}`)
         return [...prev, newMessage]
       })
@@ -363,17 +426,66 @@ export default function ChatPage() {
     await generateTTSAudio(text, language, messageId, true)
   }
 
+  const startConversationWith = async (other: User) => {
+    if (!user) return
+    try {
+      const response = await fetch('/api/v1/conversations/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('voicecare_token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ user_a_id: user.id, user_b_id: other.id })
+      })
+      if (!response.ok) throw new Error('Failed to create conversation')
+      const conv = await response.json()
+      const conversation: Conversation = {
+        id: conv.id,
+        user_a_id: conv.user_a_id,
+        user_b_id: conv.user_b_id,
+        user_a_name: conv.user_a?.name || 'User A',
+        user_b_name: conv.user_b?.name || 'User B',
+        created_at: conv.created_at,
+        user_a: conv.user_a,
+        user_b: conv.user_b
+      }
+      // Add or replace in list
+      setConversations(prev => {
+        const exists = prev.find(c => c.id === conversation.id)
+        if (exists) return prev.map(c => (c.id === conversation.id ? conversation : c))
+        return [conversation, ...prev]
+      })
+      setActiveConversation(conversation)
+      setShowStartChat(false)
+    } catch (e) {
+      console.error('Start chat failed', e)
+      setError('Failed to start chat')
+    }
+  }
+
   const handleRecordingComplete = async (audioBlob: Blob, duration: number) => {
     if (!user || !activeConversation) return
 
+    // Prevent multiple simultaneous transcriptions
+    if (isTranscribing) {
+      console.log('Already transcribing, ignoring new recording')
+      return
+    }
+
     setIsTranscribing(true)
     setError('')
+
+    // Set a timeout to ensure transcribing state is reset
+    const transcribingTimeout = setTimeout(() => {
+      console.log('Transcribing timeout - resetting state')
+      setIsTranscribing(false)
+    }, 30000) // 30 second timeout
 
     try {
       // Step 1: Transcribe audio using STT
       const formData = new FormData()
       formData.append('audio', audioBlob, 'recording.webm')
-      formData.append('language', user.preferred_lang)
+      // Do not send a language hint; let the backend auto-detect
 
       const sttResponse = await fetch('/api/v1/stt/transcribe', {
         method: 'POST',
@@ -501,7 +613,7 @@ export default function ChatPage() {
                 )
 
                 // Generate TTS for the translated message
-                await generateTTSAudio(tempMessage.id, translatedText, targetLang, true)
+                await generateTTSAudio(translatedText, targetLang, tempMessage.id, true)
               }
             } else {
               console.error('Translation API failed:', translateResponse.status)
@@ -525,6 +637,7 @@ export default function ChatPage() {
       console.error('Failed to process voice message:', error)
       setError(error instanceof Error ? error.message : 'Failed to send voice message')
     } finally {
+      clearTimeout(transcribingTimeout)
       setIsTranscribing(false)
     }
   }
@@ -534,9 +647,15 @@ export default function ChatPage() {
       // Generate TTS for this message
       const message = messages.find(msg => msg.id === messageId)
       if (message) {
-        const textToSpeak = message.text_translated || message.text_source
-        const targetLang = message.target_lang
-        generateTTSAudio(textToSpeak, targetLang, messageId, true)
+        // For sender's own message, use original text and source language
+        if (user && message.sender_id === user.id) {
+          generateTTSAudio(message.text_source, message.source_lang, messageId, true)
+        } else {
+          // For recipient, use translated text and target language
+          const textToSpeak = message.text_translated || message.text_source
+          const targetLang = message.target_lang
+          generateTTSAudio(textToSpeak, targetLang, messageId, true)
+        }
       }
     } else {
       // Play existing audio
@@ -670,20 +789,52 @@ export default function ChatPage() {
                 </button>
                 
                 {showUserSwitcher && (
-                  <div className="absolute top-full right-0 mt-2 bg-navy-900/95 backdrop-blur border border-indigo-500/30 rounded-lg shadow-lg z-50">
-                    <div className="p-2 space-y-1">
-                      <button
-                        onClick={() => switchUser({ id: '2', name: 'Ana Rodriguez', role: 'patient', preferred_lang: 'es' })}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-white/10 rounded text-white"
-                      >
-                        👩‍⚕️ Ana Rodriguez (Patient, Spanish)
-                      </button>
-                      <button
-                        onClick={() => switchUser({ id: '3', name: 'Ben Smith', role: 'nurse', preferred_lang: 'en' })}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-white/10 rounded text-white"
-                      >
-                        👨‍⚕️ Ben Smith (Nurse, English)
-                      </button>
+                  <div className="absolute top-full right-0 mt-2 bg-navy-900/95 backdrop-blur border border-indigo-500/30 rounded-lg shadow-lg z-50 min-w-[240px]">
+                    <div className="p-2 space-y-1 max-h-80 overflow-auto">
+                      {availableUsers.length === 0 ? (
+                        <div className="px-3 py-2 text-sm text-purple-200">No other users found</div>
+                      ) : (
+                        availableUsers.map(u => (
+                          <button
+                            key={u.id}
+                            onClick={() => switchUser(u)}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-white/10 rounded text-white flex items-center justify-between"
+                          >
+                            <span>{u.name}</span>
+                            <span className="text-xs text-purple-200 capitalize">{u.role}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="relative">
+                <button
+                  onClick={() => setShowStartChat(!showStartChat)}
+                  className="text-xs bg-green-500/20 hover:bg-green-500/30 px-2 py-1 rounded text-green-300 ml-2"
+                  title="Start Chat With"
+                >
+                  New Chat
+                </button>
+                {showStartChat && (
+                  <div className="absolute top-full right-0 mt-2 bg-navy-900/95 backdrop-blur border border-indigo-500/30 rounded-lg shadow-lg z-50 min-w-[260px]">
+                    <div className="p-2 space-y-1 max-h-80 overflow-auto">
+                      {availableUsers.length === 0 ? (
+                        <div className="px-3 py-2 text-sm text-purple-200">No users available</div>
+                      ) : (
+                        availableUsers.map(u => (
+                          <button
+                            key={u.id}
+                            onClick={() => startConversationWith(u)}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-white/10 rounded text-white flex items-center justify-between"
+                          >
+                            <span>{u.name}</span>
+                            <span className="text-xs text-purple-200 capitalize">{u.role}</span>
+                          </button>
+                        ))
+                      )}
                     </div>
                   </div>
                 )}
@@ -736,7 +887,21 @@ export default function ChatPage() {
                     <br />
                     <strong>Translation:</strong> Automatic
                     <br />
-                    <strong>Voice:</strong> ElevenLabs Premium
+                    <strong>Voice:</strong> {(() => {
+                      const prov = modelInfo?.tts?.provider || 'unknown'
+                      if (prov === 'openai') {
+                        const model = modelInfo?.tts?.model || 'tts-1'
+                        const voice = modelInfo?.tts?.voice ? ` (${modelInfo.tts.voice})` : ''
+                        return `OpenAI ${model}${voice}`
+                      }
+                      if (prov === 'elevenlabs') {
+                        return 'ElevenLabs Premium'
+                      }
+                      if (prov === 'browser') {
+                        return 'Browser TTS'
+                      }
+                      return 'Unknown'
+                    })()}
                     <br />
                     <strong>Mode:</strong> {useWebSocketMode ? 'Real-time' : 'Demo'}
                   </div>
@@ -784,9 +949,15 @@ export default function ChatPage() {
             ) : (
               <AudioRecorder
                 onRecordingComplete={handleRecordingComplete}
-                onRecordingStart={() => setIsRecording(true)}
-                onRecordingStop={() => setIsRecording(false)}
-                disabled={!activeConversation}
+                onRecordingStart={() => {
+                  console.log('Recording started')
+                  setIsRecording(true)
+                }}
+                onRecordingStop={() => {
+                  console.log('Recording stopped')
+                  setIsRecording(false)
+                }}
+                disabled={!activeConversation || isTranscribing}
                 maxDuration={120}
               />
             )}

@@ -10,6 +10,7 @@ from .core.config import settings
 from .core.logging import get_logger
 from .db.seed import init_database
 from .api.v1 import routes_users, routes_conversations, routes_messages, routes_tts, routes_stt, routes_capabilities
+from .api.v1 import routes_auth
 from .api.v1.ws import handle_websocket
 
 logger = get_logger(__name__)
@@ -86,6 +87,12 @@ app.include_router(
     routes_capabilities.router,
     prefix="/api/v1/capabilities",
     tags=["capabilities"]
+)
+
+app.include_router(
+    routes_auth.router,
+    prefix="/api/v1/auth",
+    tags=["auth"]
 )
 
 
