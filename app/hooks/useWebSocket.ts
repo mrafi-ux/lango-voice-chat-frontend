@@ -126,9 +126,13 @@ export function useWebSocket({ userId, onMessage, onError }: UseWebSocketOptions
   }, [])
 
   const send = useCallback((message: any) => {
+    console.log('Attempting to send WebSocket message:', message)
+    console.log('WebSocket state:', wsRef.current?.readyState)
+    
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       try {
         wsRef.current.send(JSON.stringify(message))
+        console.log('WebSocket message sent successfully')
         return true
       } catch (error) {
         console.error('Failed to send WebSocket message:', error)
