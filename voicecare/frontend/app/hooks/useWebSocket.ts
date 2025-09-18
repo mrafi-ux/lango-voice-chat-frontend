@@ -72,7 +72,7 @@ export function useWebSocket({ userId, onMessage, onError }: UseWebSocketOptions
       }
 
       ws.onclose = (event) => {
-        console.log('WebSocket disconnected:', event.code, event.reason)
+        console.log('WebSocket disconnected:', event.code, event.reason, 'reconnectAttempts:', reconnectAttempts.current)
         connectingRef.current = false
         setIsConnected(false)
         setIsConnecting(false)
@@ -127,7 +127,7 @@ export function useWebSocket({ userId, onMessage, onError }: UseWebSocketOptions
 
   const send = useCallback((message: any) => {
     console.log('Attempting to send WebSocket message:', message)
-    console.log('WebSocket state:', wsRef.current?.readyState)
+    console.log('WebSocket state:', wsRef.current?.readyState, 'isConnected:', isConnected)
     
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       try {
@@ -139,9 +139,9 @@ export function useWebSocket({ userId, onMessage, onError }: UseWebSocketOptions
         return false
       }
     }
-    console.warn('WebSocket not connected, cannot send message')
+    console.warn('WebSocket not connected, cannot send message. State:', wsRef.current?.readyState)
     return false
-  }, [])
+  }, [isConnected])
 
   // Auto-connect when userId is provided
   useEffect(() => {
