@@ -719,7 +719,7 @@ export default function ChatPage() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <div className="glass-card border-b border-white/10">
+      <div className="glass-card border-b border-white/10 relative z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
@@ -819,7 +819,7 @@ export default function ChatPage() {
                   New Chat
                 </button>
                 {showStartChat && (
-                  <div className="absolute top-full right-0 mt-2 bg-navy-900/95 backdrop-blur border border-indigo-500/30 rounded-lg shadow-lg z-50 min-w-[260px]">
+                  <div className="absolute top-full right-0 mt-2 bg-navy-900/95 backdrop-blur border border-indigo-500/30 rounded-lg shadow-lg z-[9999] min-w-[260px]">
                     <div className="p-2 space-y-1 max-h-80 overflow-auto">
                       {availableUsers.length === 0 ? (
                         <div className="px-3 py-2 text-sm text-purple-200">No users available</div>
