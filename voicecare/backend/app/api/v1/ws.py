@@ -249,6 +249,9 @@ async def handle_voice_note_message(message_data: dict) -> None:
             )
             fresh_message = result.scalar_one()
             
+            # Get sender gender for TTS voice selection
+            sender_gender = fresh_message.sender.gender if fresh_message.sender else None
+            
             # Create recipient response with translated text
             fresh_message.text_translated = translated_text
             recipient_message_response = MessageResponse.model_validate(fresh_message)
@@ -260,7 +263,9 @@ async def handle_voice_note_message(message_data: dict) -> None:
         # Send to recipient with translated text and TTS
         play_now = {
             "lang": voice_note.target_lang,
-            "text": translated_text
+            "text": translated_text,
+            "sender_gender": sender_gender,
+            "sender_id": voice_note.sender_id
         }
         
         recipient_ws_response = WSMessageResponse(

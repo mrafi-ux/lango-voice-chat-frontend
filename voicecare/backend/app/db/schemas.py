@@ -144,7 +144,7 @@ class WSMessageResponse(BaseModel):
     """WebSocket message response."""
     type: str = "message"
     message: MessageResponse
-    play_now: Optional[dict] = None  # {lang: str, text: str}
+    play_now: Optional[dict] = None  # {lang: str, text: str, sender_gender: str}
 
 
 class WSPresenceResponse(BaseModel):
