@@ -20,6 +20,8 @@ class TTSRequest(BaseModel):
     text: str
     lang: str
     voice_hint: Optional[str] = None
+    sender_gender: Optional[str] = None
+    sender_id: Optional[str] = None
 
 
 class TTSResponse(BaseModel):
@@ -76,20 +78,21 @@ async def synthesize_speech(request: TTSRequest) -> TTSResponse:
         logger.info(f"TTS synthesis: '{request.text[:50]}...' in {request.lang}")
         
         # Choose provider based on configuration
+        voice_used = None
         if settings.tts_provider == "elevenlabs" and settings.elevenlabs_api_key:
-            audio_bytes, content_type, needs_fallback = await elevenlabs_tts_service.synthesize_elevenlabs(
-                request.text, request.lang, request.voice_hint
+            audio_bytes, content_type, needs_fallback, voice_used = await elevenlabs_tts_service.synthesize_elevenlabs(
+                request.text, request.lang, request.voice_hint, request.sender_gender, request.sender_id
             )
             provider = "elevenlabs"
         elif settings.tts_provider == "elevenlabs" and not settings.elevenlabs_api_key:
             logger.warning("ElevenLabs TTS requested but API key not available, falling back to OpenAI")
-            audio_bytes, content_type, needs_fallback = await openai_tts_service.synthesize(
-                request.text, request.lang, request.voice_hint
+            audio_bytes, content_type, needs_fallback, voice_used = await openai_tts_service.synthesize(
+                request.text, request.lang, request.voice_hint, request.sender_gender, request.sender_id
             )
             provider = "openai"
         elif settings.tts_provider == "openai":
-            audio_bytes, content_type, needs_fallback = await openai_tts_service.synthesize(
-                request.text, request.lang, request.voice_hint
+            audio_bytes, content_type, needs_fallback, voice_used = await openai_tts_service.synthesize(
+                request.text, request.lang, request.voice_hint, request.sender_gender, request.sender_id
             )
             provider = "openai"
             
@@ -127,7 +130,7 @@ async def synthesize_speech(request: TTSRequest) -> TTSResponse:
             audio_base64=audio_base64,
             content_type=content_type,
             provider=provider,
-            voice_used=request.voice_hint,
+            voice_used=voice_used,
             needs_browser_fallback=False
         )
         
