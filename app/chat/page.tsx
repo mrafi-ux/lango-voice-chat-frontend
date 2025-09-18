@@ -340,12 +340,12 @@ export default function ChatPage() {
       // Generate TTS audio URL for the message and auto-play if not muted
       if (message.play_now) {
         console.log(`Auto-playing TTS: "${message.play_now.text}" in ${message.play_now.lang}`)
-        generateTTSAudio(message.play_now.text, message.play_now.lang, newMessage.id, !isMuted)
+        generateTTSAudio(message.play_now.text, message.play_now.lang, newMessage.id, !isMuted, message.play_now.sender_gender, message.play_now.sender_id)
       }
     }
   }
 
-  const generateTTSAudio = async (text: string, language: string, messageId: string, autoPlay: boolean = false) => {
+  const generateTTSAudio = async (text: string, language: string, messageId: string, autoPlay: boolean = false, senderGender?: string, senderId?: string) => {
     try {
       const response = await fetch('/api/v1/tts/speak', {
         method: 'POST',
@@ -355,7 +355,9 @@ export default function ChatPage() {
         body: JSON.stringify({
           text,
           lang: language, // Fixed: use 'lang' instead of 'language'
-          voice_hint: null // Let backend choose best voice
+          voice_hint: null, // Let backend choose best voice
+          sender_gender: senderGender, // Pass sender gender for voice selection
+          sender_id: senderId // Pass sender ID for persistent gender assignment
         })
       })
 
@@ -431,7 +433,7 @@ export default function ChatPage() {
 
   const playTTSAudio = async (text: string, language: string, messageId: string) => {
     // This function is now just a wrapper for generateTTSAudio with autoPlay
-    await generateTTSAudio(text, language, messageId, true)
+    await generateTTSAudio(text, language, messageId, true, undefined, undefined)
   }
 
   const startConversationWith = async (other: User) => {
@@ -554,7 +556,7 @@ export default function ChatPage() {
       setMessages(prev => [...prev, tempMessage])
 
       // Generate TTS for the sent message (so user can replay it)
-      generateTTSAudio(transcribedText, detectedLang, tempMessage.id, false)
+      generateTTSAudio(transcribedText, detectedLang, tempMessage.id, false, undefined, undefined)
 
       // Step 2: Send via WebSocket if connected, otherwise show demo mode
       if (useWebSocketMode && isConnected) {
@@ -621,7 +623,7 @@ export default function ChatPage() {
                 )
 
                 // Generate TTS for the translated message
-                await generateTTSAudio(translatedText, targetLang, tempMessage.id, true)
+                await generateTTSAudio(translatedText, targetLang, tempMessage.id, true, undefined, undefined)
               }
             } else {
               console.error('Translation API failed:', translateResponse.status)
@@ -656,12 +658,12 @@ export default function ChatPage() {
       if (message) {
         // For sender's own message, use original text and source language
         if (user && message.sender_id === user.id) {
-          generateTTSAudio(message.text_source, message.source_lang, messageId, true)
+          generateTTSAudio(message.text_source, message.source_lang, messageId, true, undefined, undefined)
         } else {
           // For recipient, use translated text and target language
           const textToSpeak = message.text_translated || message.text_source
           const targetLang = message.target_lang
-          generateTTSAudio(textToSpeak, targetLang, messageId, true)
+          generateTTSAudio(textToSpeak, targetLang, messageId, true, undefined, undefined)
         }
       }
     } else {
