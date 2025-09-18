@@ -9,7 +9,7 @@ interface Message {
   sender_name: string
   sender_role: string
   text_source: string
-  text_translated: string
+  text_translated: string | null
   source_lang: string
   target_lang: string
   status: 'sent' | 'delivered' | 'played'
@@ -160,7 +160,10 @@ export default function MessageBubble({
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-2">
             <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
-              {message.source_lang.toUpperCase()} → {message.target_lang.toUpperCase()}
+              {isOwnMessage 
+                ? message.source_lang.toUpperCase()  // Sender sees source language
+                : message.target_lang.toUpperCase()  // Recipient sees target language
+              }
             </span>
             
             {/* Speaker Icon - always show for translated messages */}
@@ -217,16 +220,13 @@ export default function MessageBubble({
 
         {/* Message Text */}
         <div className="space-y-2">
-          {/* Original Text (if different from translated) */}
-          {message.text_source !== message.text_translated && (
-            <div className="text-sm opacity-75 italic border-l-2 border-white/30 pl-2">
-              "{message.text_source}"
-            </div>
-          )}
-          
-          {/* Translated Text */}
+          {/* For sender's own messages: show only original text */}
+          {/* For received messages: show only translated text */}
           <div className="text-sm leading-relaxed">
-            {message.text_translated || message.text_source}
+            {isOwnMessage 
+              ? message.text_source  // Sender sees original text
+              : (message.text_translated || message.text_source)  // Recipient sees translated text
+            }
           </div>
         </div>
 
