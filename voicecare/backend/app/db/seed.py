@@ -30,6 +30,7 @@ async def seed_demo_users() -> None:
                     "id": "1",
                     "name": "Admin User",
                     "role": UserRole.ADMIN,
+                    "gender": "female",
                     "preferred_lang": "en",
                     "preferred_voice": "Rachel"
                 },
@@ -37,6 +38,7 @@ async def seed_demo_users() -> None:
                     "id": "2", 
                     "name": "Ana Rodriguez",
                     "role": UserRole.PATIENT,
+                    "gender": "female",
                     "preferred_lang": "es",
                     "preferred_voice": "Valentina"
                 },
@@ -44,6 +46,7 @@ async def seed_demo_users() -> None:
                     "id": "3",
                     "name": "Ben Smith", 
                     "role": UserRole.NURSE,
+                    "gender": "male",
                     "preferred_lang": "en",
                     "preferred_voice": "Clyde"
                 }
@@ -56,6 +59,7 @@ async def seed_demo_users() -> None:
                     id=user_data["id"],
                     name=user_data["name"],
                     role=user_data["role"],
+                    gender=user_data.get("gender"),
                     preferred_lang=user_data["preferred_lang"],
                     preferred_voice=user_data["preferred_voice"],
                     created_at=datetime.utcnow()

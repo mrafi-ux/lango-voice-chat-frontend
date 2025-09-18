@@ -132,54 +132,54 @@ class ElevenLabsTTSService:
                 "neutral": ["Rachel", "Sarah", "Clyde", "Roger", "Laura", "Thomas", "Charlie", "George", "Alice", "Matilda", "Callum", "River", "Harry", "Liam", "Will", "Jessica", "Eric", "Chris", "Brian", "Daniel"]
             },
             "es": {
-                "female": ["Matilda", "Isabella", "Valentina"],
-                "male": ["Diego"],
-                "neutral": ["Matilda", "Isabella", "Diego", "Valentina"]
+                "female": ["Matilda", "Isabella", "Valentina", "Rachel", "Sarah", "Laura", "Alice"],
+                "male": ["Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel"],
+                "neutral": ["Matilda", "Isabella", "Valentina", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel", "Rachel", "Sarah", "Laura", "Alice"]
             },
             "fr": {
-                "female": ["Charlotte", "Alice", "Camille"],
-                "male": ["Antoine"],
-                "neutral": ["Charlotte", "Alice", "Antoine", "Camille"]
+                "female": ["Charlotte", "Alice", "Camille", "Rachel", "Sarah", "Laura", "Matilda"],
+                "male": ["Antoine", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel"],
+                "neutral": ["Charlotte", "Alice", "Camille", "Antoine", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel", "Rachel", "Sarah", "Laura", "Matilda"]
             },
             "de": {
-                "female": ["Giselle", "Ingrid"],
-                "male": ["Hans", "Klaus"],
-                "neutral": ["Hans", "Giselle", "Klaus", "Ingrid"]
+                "female": ["Giselle", "Ingrid", "Rachel", "Sarah", "Laura", "Alice", "Matilda"],
+                "male": ["Hans", "Klaus", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel"],
+                "neutral": ["Hans", "Klaus", "Giselle", "Ingrid", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel", "Rachel", "Sarah", "Laura", "Alice", "Matilda"]
             },
             "it": {
-                "female": ["Bianca", "Giulia"],
-                "male": ["Giorgio", "Marco"],
-                "neutral": ["Giorgio", "Bianca", "Marco", "Giulia"]
+                "female": ["Bianca", "Giulia", "Rachel", "Sarah", "Laura", "Alice", "Matilda"],
+                "male": ["Giorgio", "Marco", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel"],
+                "neutral": ["Giorgio", "Bianca", "Marco", "Giulia", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel", "Rachel", "Sarah", "Laura", "Alice", "Matilda"]
             },
             "pt": {
-                "female": ["Camila", "Fernanda"],
-                "male": ["Ricardo"],
-                "neutral": ["Camila", "Ricardo", "Fernanda"]
+                "female": ["Camila", "Fernanda", "Rachel", "Sarah", "Laura", "Alice", "Matilda"],
+                "male": ["Ricardo", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel"],
+                "neutral": ["Camila", "Ricardo", "Fernanda", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel", "Rachel", "Sarah", "Laura", "Alice", "Matilda"]
             },
             "ar": {
-                "female": ["Amara"],
-                "male": ["Khalil"],
-                "neutral": ["Khalil", "Amara"]
+                "female": ["Amara", "Rachel", "Sarah", "Laura", "Alice", "Matilda"],
+                "male": ["Khalil", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel"],
+                "neutral": ["Khalil", "Amara", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel", "Rachel", "Sarah", "Laura", "Alice", "Matilda"]
             },
             "hi": {
-                "female": ["Aditi"],
-                "male": ["Ravi"],
-                "neutral": ["Aditi", "Ravi"]
+                "female": ["Aditi", "Rachel", "Sarah", "Laura", "Alice", "Matilda"],
+                "male": ["Ravi", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel"],
+                "neutral": ["Aditi", "Ravi", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel", "Rachel", "Sarah", "Laura", "Alice", "Matilda"]
             },
             "ja": {
-                "female": ["Akiko"],
-                "male": ["Takeshi"],
-                "neutral": ["Takeshi", "Akiko"]
+                "female": ["Akiko", "Rachel", "Sarah", "Laura", "Alice", "Matilda"],
+                "male": ["Takeshi", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel"],
+                "neutral": ["Takeshi", "Akiko", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel", "Rachel", "Sarah", "Laura", "Alice", "Matilda"]
             },
             "ko": {
-                "female": ["Soo-jin"],
-                "male": ["Jin"],
-                "neutral": ["Jin", "Soo-jin"]
+                "female": ["Soo-jin", "Rachel", "Sarah", "Laura", "Alice", "Matilda"],
+                "male": ["Jin", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel"],
+                "neutral": ["Jin", "Soo-jin", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel", "Rachel", "Sarah", "Laura", "Alice", "Matilda"]
             },
             "zh": {
-                "female": ["Li"],
-                "male": ["Wei"],
-                "neutral": ["Wei", "Li"]
+                "female": ["Li", "Rachel", "Sarah", "Laura", "Alice", "Matilda"],
+                "male": ["Wei", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel"],
+                "neutral": ["Wei", "Li", "Clyde", "Roger", "Thomas", "Charlie", "George", "Callum", "River", "Harry", "Liam", "Will", "Eric", "Chris", "Brian", "Daniel", "Rachel", "Sarah", "Laura", "Alice", "Matilda"]
             }
         }
         

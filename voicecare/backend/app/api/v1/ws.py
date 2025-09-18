@@ -251,6 +251,14 @@ async def handle_voice_note_message(message_data: dict) -> None:
             
             # Get sender gender for TTS voice selection
             sender_gender = fresh_message.sender.gender if fresh_message.sender else None
+            # If no gender is set, use preferred_voice as a hint for voice selection
+            if not sender_gender and fresh_message.sender and fresh_message.sender.preferred_voice:
+                # Map common voice names to gender hints
+                voice_name = fresh_message.sender.preferred_voice.lower()
+                if any(male_name in voice_name for male_name in ['clyde', 'david', 'james', 'john', 'michael', 'robert', 'william', 'thomas', 'charles', 'daniel']):
+                    sender_gender = "male"
+                elif any(female_name in voice_name for female_name in ['rachel', 'valentina', 'sarah', 'emma', 'olivia', 'ava', 'isabella', 'sophia', 'charlotte', 'mia']):
+                    sender_gender = "female"
             
             # Create recipient response with translated text
             fresh_message.text_translated = translated_text
