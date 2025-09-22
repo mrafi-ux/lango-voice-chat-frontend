@@ -35,6 +35,7 @@ class User(Base):
     name = Column(String(100), nullable=False)
     role = Column(SQLEnum(UserRole), nullable=False)
     gender = Column(String(20), nullable=True)
+    tts_gender = Column(String(20), nullable=True)  # Assigned TTS gender for voice selection
     preferred_lang = Column(String(5), nullable=False)  # BCP-47 format
     preferred_voice = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
