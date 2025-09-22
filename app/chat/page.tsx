@@ -22,7 +22,7 @@ interface Message {
   sender_name: string
   sender_role: string
   text_source: string
-  text_translated: string
+  text_translated: string | null
   source_lang: string
   target_lang: string
   status: 'sent' | 'delivered' | 'played'
@@ -51,6 +51,7 @@ export default function ChatPage() {
   const [error, setError] = useState<string>('')
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
+  const isTranscribingRef = useRef(false)
   const [currentlyPlayingAudio, setCurrentlyPlayingAudio] = useState<HTMLAudioElement | null>(null)
   const [isMuted, setIsMuted] = useState(false)
   const [useWebSocketMode, setUseWebSocketMode] = useState(true)
@@ -89,6 +90,7 @@ export default function ChatPage() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
 
   // Initialize user and load conversations
   useEffect(() => {
@@ -266,18 +268,23 @@ export default function ChatPage() {
       if (!res.ok) throw new Error('Failed to load messages')
       const payload = await res.json()
       const apiMessages = (payload.messages || []) as any[]
-      const list: Message[] = apiMessages.map((m) => ({
-        id: m.id,
-        sender_id: m.sender_id,
-        sender_name: m.sender?.name || 'Unknown',
-        sender_role: m.sender?.role || 'user',
-        text_source: m.text_source,
-        text_translated: m.text_translated,
-        source_lang: m.source_lang,
-        target_lang: m.target_lang,
-        status: (m.status || 'sent').toLowerCase(),
-        created_at: m.created_at,
-      }))
+      const list: Message[] = apiMessages.map((m) => {
+        const isOwnMessage = user && m.sender_id === user.id
+        return {
+          id: m.id,
+          sender_id: m.sender_id,
+          sender_name: m.sender?.name || 'Unknown',
+          sender_role: m.sender?.role || 'user',
+          text_source: m.text_source,
+          // For sender's own messages, don't show translated text
+          // For received messages, show translated text
+          text_translated: isOwnMessage ? null : m.text_translated,
+          source_lang: m.source_lang,
+          target_lang: m.target_lang,
+          status: (m.status || 'sent').toLowerCase(),
+          created_at: m.created_at,
+        }
+      })
       setMessages(list)
     } catch (error) {
       console.error('Failed to load messages:', error)
@@ -293,13 +300,16 @@ export default function ChatPage() {
       console.log(`Message from ${message.message.sender?.name}: "${message.message.text_source}" → "${message.message.text_translated}"`)
       console.log(`Language: ${message.message.source_lang} → ${message.message.target_lang}`)
       
+      const isOwnMessage = user && message.message.sender_id === user.id
       const newMessage: Message = {
         id: message.message.id,
         sender_id: message.message.sender_id,
         sender_name: message.message.sender?.name || 'Unknown',
         sender_role: message.message.sender?.role || 'user',
         text_source: message.message.text_source,
-        text_translated: message.message.text_translated,
+        // For sender's own messages, don't show translated text
+        // For received messages, show translated text
+        text_translated: isOwnMessage ? null : message.message.text_translated,
         source_lang: message.message.source_lang,
         target_lang: message.message.target_lang,
         status: 'delivered',
@@ -332,12 +342,12 @@ export default function ChatPage() {
       // Generate TTS audio URL for the message and auto-play if not muted
       if (message.play_now) {
         console.log(`Auto-playing TTS: "${message.play_now.text}" in ${message.play_now.lang}`)
-        generateTTSAudio(message.play_now.text, message.play_now.lang, newMessage.id, !isMuted)
+        generateTTSAudio(message.play_now.text, message.play_now.lang, newMessage.id, !isMuted, message.play_now.sender_gender, message.play_now.sender_id)
       }
     }
   }
 
-  const generateTTSAudio = async (text: string, language: string, messageId: string, autoPlay: boolean = false) => {
+  const generateTTSAudio = async (text: string, language: string, messageId: string, autoPlay: boolean = false, senderGender?: string, senderId?: string) => {
     try {
       const response = await fetch('/api/v1/tts/speak', {
         method: 'POST',
@@ -347,7 +357,9 @@ export default function ChatPage() {
         body: JSON.stringify({
           text,
           lang: language, // Fixed: use 'lang' instead of 'language'
-          voice_hint: null // Let backend choose best voice
+          voice_hint: null, // Let backend choose best voice
+          sender_gender: senderGender, // Pass sender gender for voice selection
+          sender_id: senderId // Pass sender ID for persistent gender assignment
         })
       })
 
@@ -423,7 +435,7 @@ export default function ChatPage() {
 
   const playTTSAudio = async (text: string, language: string, messageId: string) => {
     // This function is now just a wrapper for generateTTSAudio with autoPlay
-    await generateTTSAudio(text, language, messageId, true)
+    await generateTTSAudio(text, language, messageId, true, undefined, undefined)
   }
 
   const startConversationWith = async (other: User) => {
@@ -463,21 +475,29 @@ export default function ChatPage() {
     }
   }
 
-  const handleRecordingComplete = async (audioBlob: Blob, duration: number) => {
+  const onRecordingStart = useCallback(() => {
+    setIsRecording(true)
+  }, [])
+
+  const onRecordingStop = useCallback(() => {
+    setIsRecording(false)
+  }, [])
+
+
+  const handleRecordingComplete = useCallback(async (audioBlob: Blob, duration: number) => {
     if (!user || !activeConversation) return
 
     // Prevent multiple simultaneous transcriptions
-    if (isTranscribing) {
-      console.log('Already transcribing, ignoring new recording')
+    if (isTranscribingRef.current) {
       return
     }
 
+    isTranscribingRef.current = true
     setIsTranscribing(true)
     setError('')
 
     // Set a timeout to ensure transcribing state is reset
     const transcribingTimeout = setTimeout(() => {
-      console.log('Transcribing timeout - resetting state')
       setIsTranscribing(false)
     }, 30000) // 30 second timeout
 
@@ -485,7 +505,8 @@ export default function ChatPage() {
       // Step 1: Transcribe audio using STT
       const formData = new FormData()
       formData.append('audio', audioBlob, 'recording.webm')
-      // Do not send a language hint; let the backend auto-detect
+      // Send user's preferred language as hint for better detection
+      formData.append('language', user.preferred_lang)
 
       const sttResponse = await fetch('/api/v1/stt/transcribe', {
         method: 'POST',
@@ -505,132 +526,136 @@ export default function ChatPage() {
       const transcribedText = sttResult.text
       const detectedLang = sttResult.language
 
-      if (!transcribedText.trim()) {
-        setError('No speech detected. Please try again.')
-        return
-      }
+      // Only proceed if we have transcribed text
+      if (transcribedText.trim()) {
+        // Determine target language (recipient's preferred language)
+        const recipientId = activeConversation.user_a_id === user.id 
+          ? activeConversation.user_b_id 
+          : activeConversation.user_a_id
+        
+        // Get recipient's preferred language from conversation data
+        let targetLang = 'en' // Default fallback
+        if (activeConversation.user_a_id === recipientId) {
+          // Recipient is user_a, get their preferred language
+          targetLang = activeConversation.user_a?.preferred_lang || 'en'
+        } else if (activeConversation.user_b_id === recipientId) {
+          // Recipient is user_b, get their preferred language  
+          targetLang = activeConversation.user_b?.preferred_lang || 'en'
+        }
+        
+        console.log(`Translation: ${user.name} (${detectedLang}) → Recipient ${recipientId} (${targetLang})`)
 
-      // Determine target language (recipient's preferred language)
-      const recipientId = activeConversation.user_a_id === user.id 
-        ? activeConversation.user_b_id 
-        : activeConversation.user_a_id
-      
-      // Get recipient's preferred language from conversation data
-      let targetLang = 'en' // Default fallback
-      if (activeConversation.user_a_id === recipientId) {
-        // Recipient is user_a, get their preferred language
-        targetLang = activeConversation.user_a?.preferred_lang || 'en'
-      } else if (activeConversation.user_b_id === recipientId) {
-        // Recipient is user_b, get their preferred language  
-        targetLang = activeConversation.user_b?.preferred_lang || 'en'
-      }
-      
-      console.log(`Translation: ${user.name} (${detectedLang}) → Recipient ${recipientId} (${targetLang})`)
-
-      // Add message to local state immediately (optimistic update)
-      const tempMessage: Message = {
-        id: `temp-${Date.now()}`,
-        sender_id: user.id,
-        sender_name: user.name,
-        sender_role: user.role,
-        text_source: transcribedText,
-        text_translated: transcribedText, // Will be updated when translation comes back
-        source_lang: detectedLang,
-        target_lang: targetLang,
-        status: 'sent',
-        created_at: new Date().toISOString(),
-        duration
-      }
-
-      setMessages(prev => [...prev, tempMessage])
-
-      // Generate TTS for the sent message (so user can replay it)
-      generateTTSAudio(transcribedText, detectedLang, tempMessage.id, false)
-
-      // Step 2: Send via WebSocket if connected, otherwise show demo mode
-      if (useWebSocketMode && isConnected) {
-        const voiceNoteMessage = {
-          type: 'voice_note',
-          conversation_id: activeConversation.id,
+        // Add message to local state immediately (optimistic update)
+        const tempMessage: Message = {
+          id: `temp-${Date.now()}`,
           sender_id: user.id,
+          sender_name: user.name,
+          sender_role: user.role,
           text_source: transcribedText,
+          text_translated: null, // Sender sees original text only
           source_lang: detectedLang,
           target_lang: targetLang,
-          client_sent_at: new Date().toISOString()
-        }
-        
-        console.log('Sending voice note via WebSocket:', voiceNoteMessage)
-        const sent = sendWebSocketMessage(voiceNoteMessage)
-        
-        if (!sent) {
-          throw new Error('Failed to send message via WebSocket')
+          status: 'sent',
+          created_at: new Date().toISOString(),
+          duration
         }
 
-      } else {
-        // Demo mode - simulate translation and response
-        console.log('Running in demo mode (no WebSocket)')
-        
-        // Simulate translation
-        setTimeout(async () => {
-          try {
-            // Use our backend translation API instead of LibreTranslate directly
-            const translateResponse = await fetch('/api/v1/capabilities/translate', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                text: transcribedText,
-                source: detectedLang,
-                target: targetLang
-              })
-            })
+        setMessages(prev => [...prev, tempMessage])
 
-            if (translateResponse.ok) {
-              const translateResult = await translateResponse.json()
-              
-              if (translateResult.error) {
-                console.error('Translation error:', translateResult.error)
-                // Fallback to original text if translation fails
-                const fallbackText = `[Translation failed] ${transcribedText}`
-                setMessages(prev => 
-                  prev.map(msg => 
-                    msg.id === tempMessage.id 
-                      ? { ...msg, text_translated: fallbackText, status: 'delivered' as const }
-                      : msg
-                  )
-                )
-              } else {
-                const translatedText = translateResult.translatedText
+        // Generate TTS for the sent message (so user can replay it)
+        generateTTSAudio(transcribedText, detectedLang, tempMessage.id, false, undefined, undefined)
 
-                // Update the message with translation
-                setMessages(prev => 
-                  prev.map(msg => 
-                    msg.id === tempMessage.id 
-                      ? { ...msg, text_translated: translatedText, status: 'delivered' as const }
-                      : msg
-                  )
-                )
-
-                // Generate TTS for the translated message
-                await generateTTSAudio(translatedText, targetLang, tempMessage.id, true)
-              }
-            } else {
-              console.error('Translation API failed:', translateResponse.status)
-              // Fallback to original text
-              const fallbackText = `[Translation unavailable] ${transcribedText}`
-              setMessages(prev => 
-                prev.map(msg => 
-                  msg.id === tempMessage.id 
-                    ? { ...msg, text_translated: fallbackText, status: 'delivered' as const }
-                    : msg
-                )
-              )
-            }
-          } catch (err) {
-            console.error('Translation failed:', err)
+        // Step 2: Send via WebSocket if connected, otherwise show demo mode
+        let webSocketSent = false
+        if (useWebSocketMode && isConnected) {
+          const voiceNoteMessage = {
+            type: 'voice_note',
+            conversation_id: activeConversation.id,
+            sender_id: user.id,
+            text_source: transcribedText,
+            source_lang: detectedLang,
+            target_lang: targetLang,
+            client_sent_at: new Date().toISOString()
           }
-        }, 1000)
+          
+          console.log('Sending voice note via WebSocket:', voiceNoteMessage)
+          webSocketSent = sendWebSocketMessage(voiceNoteMessage)
+          
+          if (!webSocketSent) {
+            console.log('WebSocket send failed, falling back to demo mode')
+            // Don't throw error, just fall back to demo mode
+            // throw new Error('Failed to send message via WebSocket')
+          }
+        }
+
+        // Always run demo mode as fallback or primary mode
+        if (!useWebSocketMode || !isConnected || !webSocketSent) {
+          // Demo mode - simulate translation and response
+          console.log('Running in demo mode (no WebSocket)')
+          
+          // Simulate translation
+          setTimeout(async () => {
+            try {
+              // Use our backend translation API instead of LibreTranslate directly
+              const translateResponse = await fetch('/api/v1/capabilities/translate', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  text: transcribedText,
+                  source: detectedLang,
+                  target: targetLang
+                })
+              })
+
+              if (translateResponse.ok) {
+                const translateResult = await translateResponse.json()
+                
+                if (translateResult.error) {
+                  console.error('Translation error:', translateResult.error)
+                  // Fallback to original text if translation fails (sender still sees original)
+                  setMessages(prev => 
+                    prev.map(msg => 
+                      msg.id === tempMessage.id 
+                        ? { ...msg, text_translated: null, status: 'delivered' as const } // Sender sees original text only
+                        : msg
+                    )
+                  )
+                } else {
+                  const translatedText = translateResult.translatedText
+
+                  // Update the message with translation (but sender still sees original text)
+                  setMessages(prev => 
+                    prev.map(msg => 
+                      msg.id === tempMessage.id 
+                        ? { ...msg, text_translated: null, status: 'delivered' as const } // Sender sees original text only
+                        : msg
+                    )
+                  )
+
+                  // Generate TTS for the translated message
+                  await generateTTSAudio(translatedText, targetLang, tempMessage.id, true, undefined, undefined)
+                }
+              } else {
+                console.error('Translation API failed:', translateResponse.status)
+                // Fallback to original text (sender still sees original)
+                setMessages(prev => 
+                  prev.map(msg => 
+                    msg.id === tempMessage.id 
+                      ? { ...msg, text_translated: null, status: 'delivered' as const } // Sender sees original text only
+                      : msg
+                  )
+                )
+              }
+            } catch (err) {
+              console.error('Translation failed:', err)
+            }
+          }, 1000)
+        }
+      } else {
+        // No speech detected
+        setError('No speech detected. Please try again.')
       }
 
     } catch (error) {
@@ -638,9 +663,10 @@ export default function ChatPage() {
       setError(error instanceof Error ? error.message : 'Failed to send voice message')
     } finally {
       clearTimeout(transcribingTimeout)
+      isTranscribingRef.current = false
       setIsTranscribing(false)
     }
-  }
+  }, [user, activeConversation, useWebSocketMode, isConnected, sendWebSocketMessage])
 
   const handlePlayAudio = (audioUrl: string, messageId: string) => {
     if (audioUrl === 'generate') {
@@ -649,12 +675,12 @@ export default function ChatPage() {
       if (message) {
         // For sender's own message, use original text and source language
         if (user && message.sender_id === user.id) {
-          generateTTSAudio(message.text_source, message.source_lang, messageId, true)
+          generateTTSAudio(message.text_source, message.source_lang, messageId, true, undefined, undefined)
         } else {
           // For recipient, use translated text and target language
           const textToSpeak = message.text_translated || message.text_source
           const targetLang = message.target_lang
-          generateTTSAudio(textToSpeak, targetLang, messageId, true)
+          generateTTSAudio(textToSpeak, targetLang, messageId, true, undefined, undefined)
         }
       }
     } else {
@@ -949,14 +975,8 @@ export default function ChatPage() {
             ) : (
               <AudioRecorder
                 onRecordingComplete={handleRecordingComplete}
-                onRecordingStart={() => {
-                  console.log('Recording started')
-                  setIsRecording(true)
-                }}
-                onRecordingStop={() => {
-                  console.log('Recording stopped')
-                  setIsRecording(false)
-                }}
+                onRecordingStart={onRecordingStart}
+                onRecordingStop={onRecordingStop}
                 disabled={!activeConversation || isTranscribing}
                 maxDuration={120}
               />

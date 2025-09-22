@@ -16,7 +16,6 @@ export default function AudioRecorder({
   onRecordingStart,
   onRecordingStop,
   maxDuration = 120,
-  minDuration = 0.5, // Minimum 0.5 seconds for ElevenLabs STT
   disabled = false
 }: AudioRecorderProps) {
   const [isRecording, setIsRecording] = useState(false)
@@ -32,7 +31,6 @@ export default function AudioRecorder({
 
   const startRecording = useCallback(async () => {
     if (disabled || isRecording) {
-      console.log('Recording already in progress or disabled')
       return
     }
 
@@ -73,13 +71,6 @@ export default function AudioRecorder({
         })
         const recordingDuration = duration
         
-        // Check minimum duration
-        if (recordingDuration < minDuration) {
-          setError(`Please record for at least ${minDuration} seconds`)
-          cleanup()
-          return
-        }
-        
         onRecordingComplete(audioBlob, recordingDuration)
         cleanup()
       }
@@ -119,8 +110,6 @@ export default function AudioRecorder({
   }, [isRecording, onRecordingStop])
 
   const cleanup = useCallback(() => {
-    console.log('Cleaning up audio recorder')
-    
     if (timerRef.current) {
       clearInterval(timerRef.current)
       timerRef.current = null
@@ -192,11 +181,6 @@ export default function AudioRecorder({
             <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
             <span className="text-white font-medium">
               {isInitializing ? 'Initializing...' : formatDuration(duration)}
-              {isRecording && duration < minDuration && (
-                <span className="text-yellow-300 text-xs ml-1">
-                  (min {minDuration}s)
-                </span>
-              )}
             </span>
           </div>
           {isRecording && (
