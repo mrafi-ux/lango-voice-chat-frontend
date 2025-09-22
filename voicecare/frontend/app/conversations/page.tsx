@@ -158,14 +158,16 @@ export default function ConversationsPage() {
       const res = await apiClient.createOrGetConversation(user.id, other.id)
       if (!res.success || !res.data) throw new Error(res.error || 'Create failed')
       const c = res.data as unknown as Conversation
-      router.push(`/chat/${c.id}`)
+      // Use query parameter for consistency
+      router.push(`/chat?conversationId=${c.id}`)
     } catch (e) {
       setError('Failed to start chat')
     }
   }
 
   const openConversation = (c: Conversation) => {
-    router.push(`/chat/${c.id}`)
+    // Navigate to /chat with the conversation ID as a query parameter
+    router.push(`/chat?conversationId=${c.id}`)
   }
 
   if (loading) {
