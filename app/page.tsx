@@ -69,15 +69,15 @@ export default function LandingPage() {
   ]
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden bg-gradient-to-b from-blue-50 to-white">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
           <div className="text-center">
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6">
-              Voice<span className="text-purple-300">Care</span>
+            <h1 className="text-5xl md:text-7xl font-bold text-gray-800 mb-6">
+              Voice<span className="text-blue-600">Care</span>
             </h1>
-            <p className="text-xl md:text-2xl text-purple-100 mb-8 max-w-4xl mx-auto">
+            <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-4xl mx-auto">
               Break language barriers in healthcare with AI-powered voice translation. 
               Real-time communication between patients and nurses using premium voice synthesis.
             </p>
@@ -85,21 +85,21 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
               <Link
                 href="/auth/login"
-                className="btn-primary px-8 py-4 rounded-2xl text-lg font-semibold text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                className="px-8 py-4 rounded-2xl text-lg font-semibold text-white bg-gradient-to-r from-blue-500 to-blue-600 shadow-md hover:from-blue-600 hover:to-blue-700 transition-all duration-300"
               >
                 Sign In
               </Link>
               <Link
                 href="/auth/register"
-                className="btn-secondary px-8 py-4 rounded-2xl text-lg font-semibold text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                className="px-8 py-4 rounded-2xl text-lg font-semibold text-gray-700 border border-gray-200 bg-white hover:bg-gray-50 transition-all duration-300 shadow-sm"
               >
                 Get Started
               </Link>
             </div>
 
             {/* System Status */}
-            <div className="glass-card rounded-2xl p-6 max-w-2xl mx-auto">
-              <h3 className="text-lg font-semibold text-white mb-4">System Status</h3>
+            <div className="bg-white rounded-2xl p-6 max-w-2xl mx-auto border border-gray-100 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">System Status</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                   { name: 'Whisper STT', status: 'online' },
@@ -108,8 +108,8 @@ export default function LandingPage() {
                   { name: 'WebSocket', status: 'online' }
                 ].map((service) => (
                   <div key={service.name} className="text-center">
-                    <div className="w-3 h-3 bg-green-400 rounded-full mx-auto mb-2 animate-pulse"></div>
-                    <div className="text-sm text-purple-100">{service.name}</div>
+                    <div className="w-3 h-3 bg-green-500 rounded-full mx-auto mb-2 animate-pulse"></div>
+                    <div className="text-sm text-gray-600">{service.name}</div>
                   </div>
                 ))}
               </div>
@@ -122,10 +122,10 @@ export default function LandingPage() {
       <div className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">
+            <h2 className="text-4xl font-bold text-gray-800 mb-4">
               Powered by Advanced AI
             </h2>
-            <p className="text-xl text-purple-100 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Enterprise-grade voice processing with medical-specific optimizations
             </p>
           </div>
@@ -134,11 +134,11 @@ export default function LandingPage() {
             {features.map((feature, index) => (
               <div
                 key={feature.title}
-                className="glass-card rounded-2xl p-8 text-center hover:neon-glow transition-all duration-300"
+                className="bg-white rounded-2xl p-8 text-center border border-gray-100 hover:shadow-md transition-all duration-300"
               >
                 <div className="text-4xl mb-6">{feature.icon}</div>
-                <h3 className="text-xl font-semibold text-white mb-4">{feature.title}</h3>
-                <p className="text-purple-100">{feature.description}</p>
+                <h3 className="text-xl font-semibold text-gray-800 mb-4">{feature.title}</h3>
+                <p className="text-gray-600">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -149,10 +149,10 @@ export default function LandingPage() {
       <div className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">
+            <h2 className="text-4xl font-bold text-gray-800 mb-4">
               How It Works
             </h2>
-            <p className="text-xl text-purple-100 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Four simple steps to seamless multilingual healthcare communication
             </p>
           </div>
@@ -160,11 +160,11 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {steps.map((step, index) => (
               <div key={step.number} className="text-center">
-                <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
+                <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-md">
                   {step.number}
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-4">{step.title}</h3>
-                <p className="text-purple-100">{step.description}</p>
+                <h3 className="text-xl font-semibold text-gray-800 mb-4">{step.title}</h3>
+                <p className="text-gray-600">{step.description}</p>
               </div>
             ))}
           </div>
@@ -174,23 +174,23 @@ export default function LandingPage() {
       {/* CTA Section */}
       <div className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="glass-strong rounded-3xl p-12">
-            <h2 className="text-4xl font-bold text-white mb-6">
+          <div className="bg-white rounded-3xl p-12 border border-gray-100 shadow-sm">
+            <h2 className="text-4xl font-bold text-gray-800 mb-6">
               Ready to Transform Healthcare Communication?
             </h2>
-            <p className="text-xl text-purple-100 mb-8">
+            <p className="text-xl text-gray-600 mb-8">
               Join healthcare professionals using VoiceCare to break language barriers
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/auth/register"
-                className="btn-primary px-8 py-4 rounded-2xl text-lg font-semibold text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                className="px-8 py-4 rounded-2xl text-lg font-semibold text-white bg-gradient-to-r from-blue-500 to-blue-600 shadow-md hover:from-blue-600 hover:to-blue-700 transition-all duration-300"
               >
                 Start Free Trial
               </Link>
               <Link
                 href="/settings/languages"
-                className="btn-secondary px-8 py-4 rounded-2xl text-lg font-semibold text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                className="px-8 py-4 rounded-2xl text-lg font-semibold text-gray-700 border border-gray-200 bg-white hover:bg-gray-50 transition-all duration-300 shadow-sm"
               >
                 View Capabilities
               </Link>

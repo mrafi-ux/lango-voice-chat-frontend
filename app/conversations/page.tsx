@@ -192,12 +192,12 @@ export default function ConversationsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
-              <Link href="/" className="text-2xl font-bold text-white">
-                Voice<span className="text-purple-300">Care</span>
+              <Link href="/" className="text-2xl font-bold text-gray-800">
+                Voice<span className="text-blue-600">Care</span>
               </Link>
               <div className="flex items-center space-x-2">
-                <Users className="w-5 h-5 text-purple-300" />
-                <span className="text-white">Conversations</span>
+                <Users className="w-5 h-5 text-blue-600" />
+                <span className="text-gray-800">Conversations</span>
               </div>
             </div>
 
@@ -218,25 +218,25 @@ export default function ConversationsPage() {
               <div className="relative">
                 <button
                   onClick={() => setShowNewChat(v => !v)}
-                  className="text-xs bg-green-500/20 hover:bg-green-500/30 px-2 py-1 rounded text-green-300 ml-2 flex items-center gap-1"
+                  className="text-xs bg-green-50 hover:bg-green-100 px-2 py-1 rounded text-green-600 ml-2 flex items-center gap-1"
                   title="Start New Chat"
                 >
                   <Plus className="w-3 h-3" /> New Chat
                 </button>
                 {showNewChat && (
-                  <div className="absolute top-full right-0 mt-2 bg-navy-900/95 backdrop-blur border border-indigo-500/30 rounded-lg shadow-lg z-[9999] min-w-[260px]">
+                  <div className="absolute top-full right-0 mt-2 bg-white backdrop-blur border border-gray-200 rounded-lg shadow-lg z-[9999] min-w-[260px]">
                     <div className="p-2 space-y-1 max-h-80 overflow-auto">
                       {otherUsersWithNoConversation.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-purple-200">No users available</div>
+                        <div className="px-3 py-2 text-sm text-gray-500">No users available</div>
                       ) : (
                         otherUsersWithNoConversation.map(u => (
                           <button
                             key={u.id}
                             onClick={() => startChatWith(u)}
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-white/10 rounded text-white flex items-center justify-between"
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded text-gray-800 flex items-center justify-between"
                           >
                             <span>{u.name}</span>
-                            <span className="text-xs text-purple-200 capitalize">{u.role}</span>
+                            <span className="text-xs text-gray-500 capitalize">{u.role}</span>
                           </button>
                         ))
                       )}
@@ -247,15 +247,12 @@ export default function ConversationsPage() {
 
               {/* User Info */}
               <div className="flex items-center space-x-2">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm ${
-                  user.role === 'admin' ? 'bg-red-500' :
-                  user.role === 'nurse' ? 'bg-blue-500' : 'bg-green-500'
-                }`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm bg-blue-500`}>
                   {user.name.split(' ').map(n => n[0]).join('')}
                 </div>
-                <div className="text-white">
+                <div className="text-gray-800">
                   <div className="font-medium">{user.name}</div>
-                  <div className="text-xs text-purple-200">{user.role}</div>
+                  <div className="text-xs text-gray-500">{user.role}</div>
                 </div>
               </div>
 
@@ -273,7 +270,7 @@ export default function ConversationsPage() {
       {/* Body */}
       <div className={listContainerClass}>
         {error && (
-          <div className="rounded-xl p-4 mb-4 bg-red-500/20 border border-red-500/30 text-red-300 flex items-center gap-2">
+          <div className="rounded-xl p-4 mb-4 bg-red-50 border border-red-200 text-red-600 flex items-center gap-2">
             <AlertCircle className="w-4 h-4" />
             <span className="text-sm">{error}</span>
           </div>
@@ -282,11 +279,11 @@ export default function ConversationsPage() {
         {conversations.length === 0 ? (
           <div className="text-center py-16">
             <div className="text-6xl mb-4">💬</div>
-            <h3 className="text-xl font-semibold text-white mb-2">No conversations yet</h3>
-            <p className="text-purple-100 mb-6">Start a new chat to begin a conversation.</p>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">No conversations yet</h3>
+            <p className="text-gray-600 mb-6">Start a new chat to begin a conversation.</p>
             <button
               onClick={() => setShowNewChat(true)}
-              className="btn-primary px-6 py-3 rounded-xl text-white"
+              className="btn-primary px-6 py-3 rounded-xl text-gray-800"
             >
               Start New Chat
             </button>
@@ -299,18 +296,18 @@ export default function ConversationsPage() {
                 <button
                   key={c.id}
                   onClick={() => openConversation(c)}
-                  className="w-full flex items-center justify-between p-4 glass-card rounded-xl hover:bg-white/10 transition-colors"
+                  className="w-full flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white font-semibold">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white bg-blue-500`}>
                       {other?.name.split(' ').map(n => n[0]).join('')}
                     </div>
                     <div className="text-left">
-                      <div className="text-white font-medium">{other?.name}</div>
-                      <div className="text-xs text-purple-200">Started {new Date(c.created_at).toLocaleString()}</div>
+                      <div className="text-gray-800 font-medium">{other?.name}</div>
+                      <div className="text-xs text-gray-500">Started {new Date(c.created_at).toLocaleString()}</div>
                     </div>
                   </div>
-                  <div className="text-xs text-purple-200">Open</div>
+                  <div className="text-xs text-gray-500">Open</div>
                 </button>
               )
             })}

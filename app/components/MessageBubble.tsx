@@ -92,12 +92,10 @@ export default function MessageBubble({
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString)
-    // Display time in UTC+5 (Asia/Karachi)
     return new Intl.DateTimeFormat(undefined, {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true,
-      timeZone: 'Asia/Karachi',
     }).format(date)
   }
 
@@ -110,21 +108,21 @@ export default function MessageBubble({
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'admin': return 'text-red-400'
-      case 'nurse': return 'text-blue-400'
-      case 'patient': return 'text-green-400'
-      default: return 'text-purple-400'
+      case 'admin': return 'text-red-600'
+      case 'nurse': return 'text-blue-600'
+      case 'patient': return 'text-green-600'
+      default: return 'text-gray-600'
     }
   }
 
   const getStatusIcon = () => {
     switch (message.status) {
       case 'sent':
-        return <Check className="w-4 h-4 text-gray-400" />
+        return <Check className="w-4 h-4 text-gray-500" />
       case 'delivered':
-        return <CheckCheck className="w-4 h-4 text-gray-400" />
+        return <CheckCheck className="w-4 h-4 text-gray-500" />
       case 'played':
-        return <CheckCheck className="w-4 h-4 text-blue-400" />
+        return <CheckCheck className="w-4 h-4 text-blue-500" />
       default:
         return null
     }
@@ -133,23 +131,20 @@ export default function MessageBubble({
   return (
     <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-4 animate-slide-up`}>
       <div className={`
-        max-w-xs lg:max-w-md px-4 py-3 rounded-2xl shadow-lg
+        max-w-xs lg:max-w-md px-4 py-3 rounded-2xl shadow-sm
         ${isOwnMessage 
-          ? 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white ml-12' 
-          : 'glass-card text-white mr-12'
+          ? 'bg-blue-500 text-white ml-12' 
+          : 'bg-white text-gray-800 border border-gray-200 mr-12'
         }
         transform transition-all duration-300 hover:scale-[1.02]
       `}>
         {/* Sender Info (for received messages) */}
         {!isOwnMessage && (
           <div className="flex items-center space-x-2 mb-2">
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
-              message.sender_role === 'admin' ? 'bg-red-500' :
-              message.sender_role === 'nurse' ? 'bg-blue-500' : 'bg-green-500'
-            }`}>
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold text-white bg-blue-500`}>
               {message.sender_name.split(' ').map(n => n[0]).join('')}
             </div>
-            <span className="text-sm font-medium">{message.sender_name}</span>
+            <span className="text-sm font-medium text-gray-700">{message.sender_name}</span>
             <span className={`text-xs ${getRoleColor(message.sender_role)}`}>
               {message.sender_role}
             </span>
@@ -159,58 +154,73 @@ export default function MessageBubble({
         {/* Language Translation Badge */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-2">
-            <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
+            <span className={`text-xs px-2 py-1 rounded-full ${
+              isOwnMessage 
+                ? 'bg-white/20 text-white' 
+                : 'bg-gray-100 text-gray-600'
+            }`}>
               {isOwnMessage 
-                ? message.source_lang.toUpperCase()  // Sender sees source language
-                : message.target_lang.toUpperCase()  // Recipient sees target language
+                ? message.source_lang.toUpperCase()
+                : message.target_lang.toUpperCase()
               }
             </span>
             
-            {/* Speaker Icon - always show for translated messages */}
+            {/* Speaker Icon */}
             <button
               onClick={() => {
                 if (message.audio_url) {
                   onPlayAudio?.(message.audio_url, message.id)
                 } else {
-                  // Generate TTS if no audio URL exists yet
-                  console.log('Generating TTS for message:', message.id)
-                  // This will be handled by the parent component
                   onPlayAudio?.('generate', message.id)
                 }
               }}
-              className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
+              className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
+                isOwnMessage 
+                  ? 'bg-white/20 hover:bg-white/30' 
+                  : 'bg-gray-100 hover:bg-gray-200'
+              }`}
               title={message.audio_url ? 'Play audio' : 'Generate and play audio'}
             >
-              <Volume2 className="w-3 h-3" />
+              <Volume2 className={`w-3 h-3 ${isOwnMessage ? 'text-white' : 'text-gray-600'}`} />
             </button>
           </div>
         </div>
 
         {/* Audio Player (if audio available) */}
         {message.audio_url && (
-          <div className="flex items-center space-x-3 mb-3 p-3 bg-white/10 rounded-xl">
+          <div className={`flex items-center space-x-3 mb-3 p-3 rounded-xl ${
+            isOwnMessage ? 'bg-white/10' : 'bg-gray-50'
+          }`}>
             <button
               onClick={handlePlayPause}
-              className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                isOwnMessage 
+                  ? 'bg-white/20 hover:bg-white/30' 
+                  : 'bg-gray-200 hover:bg-gray-300'
+              }`}
             >
               {isPlaying ? (
-                <Pause className="w-5 h-5" />
+                <Pause className={`w-5 h-5 ${isOwnMessage ? 'text-white' : 'text-gray-600'}`} />
               ) : (
-                <Play className="w-5 h-5 ml-0.5" />
+                <Play className={`w-5 h-5 ml-0.5 ${isOwnMessage ? 'text-white' : 'text-gray-600'}`} />
               )}
             </button>
             
             {/* Waveform/Progress Bar */}
             <div className="flex-1">
               <div className="flex items-center space-x-2">
-                <Volume2 className="w-4 h-4" />
-                <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
+                <Volume2 className={`w-4 h-4 ${isOwnMessage ? 'text-white' : 'text-gray-500'}`} />
+                <div className={`flex-1 h-1 rounded-full overflow-hidden ${
+                  isOwnMessage ? 'bg-white/20' : 'bg-gray-200'
+                }`}>
                   <div 
-                    className="h-full bg-white transition-all duration-100"
+                    className={`h-full transition-all duration-100 ${
+                      isOwnMessage ? 'bg-white' : 'bg-blue-500'
+                    }`}
                     style={{ width: `${playbackProgress}%` }}
                   />
                 </div>
-                <span className="text-xs">
+                <span className={`text-xs ${isOwnMessage ? 'text-white/80' : 'text-gray-500'}`}>
                   {formatDuration(message.duration)}
                 </span>
               </div>
@@ -220,19 +230,17 @@ export default function MessageBubble({
 
         {/* Message Text */}
         <div className="space-y-2">
-          {/* For sender's own messages: show only original text */}
-          {/* For received messages: show only translated text */}
           <div className="text-sm leading-relaxed">
             {isOwnMessage 
-              ? message.text_source  // Sender sees original text
-              : (message.text_translated || message.text_source)  // Recipient sees translated text
+              ? message.text_source
+              : (message.text_translated || message.text_source)
             }
           </div>
         </div>
 
         {/* Message Footer */}
         <div className={`flex items-center justify-between mt-2 text-xs ${
-          isOwnMessage ? 'text-purple-200' : 'text-purple-300'
+          isOwnMessage ? 'text-white/80' : 'text-gray-500'
         }`}>
           <span>{formatTime(message.created_at)}</span>
           {isOwnMessage && (
@@ -244,4 +252,4 @@ export default function MessageBubble({
       </div>
     </div>
   )
-} 
+}
