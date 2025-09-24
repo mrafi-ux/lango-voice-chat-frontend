@@ -161,7 +161,7 @@ export default function AudioRecorder({
         `}
       >
         {isInitializing ? (
-          <Loader2 className="w-6 h-6 text-white" />
+          <Loader2 className="w-6 h-6 text-gray-800" />
         ) : isRecording ? (
           <Square className="w-6 h-6 text-white" />
         ) : (
@@ -179,12 +179,12 @@ export default function AudioRecorder({
         <div className="flex items-center space-x-2">
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            <span className="text-white font-medium">
+            <span className="text-gray-800 font-medium">
               {isInitializing ? 'Initializing...' : formatDuration(duration)}
             </span>
           </div>
           {isRecording && (
-            <div className="text-purple-200 text-sm">
+            <div className="text-gray-500 text-sm">
               {maxDuration - duration}s left
             </div>
           )}
@@ -193,7 +193,7 @@ export default function AudioRecorder({
 
       {/* Error Message */}
       {error && (
-        <div className="text-red-400 text-sm bg-red-500/20 px-3 py-1 rounded-lg">
+        <div className="text-red-600 text-sm bg-red-50 px-3 py-1 rounded-lg">
           {error}
         </div>
       )}
