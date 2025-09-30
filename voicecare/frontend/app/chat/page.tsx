@@ -3,7 +3,19 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Users, Wifi, WifiOff, Volume2, VolumeX, AlertCircle } from 'lucide-react'
+import { 
+  Wifi, 
+  WifiOff, 
+  Volume2, 
+  VolumeX, 
+  Heart, 
+  Users, 
+  AlertCircle, 
+  MessageCircle, 
+  Settings2, 
+  Info,
+  Settings
+} from 'lucide-react'
 
 import AudioRecorder from '../components/AudioRecorder'
 import MessageBubble from '../components/MessageBubble'
@@ -82,14 +94,30 @@ export default function ChatPage() {
     }
   })
 
-  // Auto-scroll to bottom when new messages arrive
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  // Track the last message count to detect new messages
+  const lastMessageCount = useRef(0);
+
+  // Auto-scroll to bottom only when new messages arrive
+  const scrollToBottom = useCallback(({ behavior = 'smooth' }: { behavior?: 'auto' | 'smooth' } = {}) => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
+  }, []);
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    // Only auto-scroll if a new message was added (not if messages were just updated)
+    if (messages.length > lastMessageCount.current) {
+      scrollToBottom({ behavior: 'smooth' });
+      lastMessageCount.current = messages.length;
+    } else if (messages.length < lastMessageCount.current) {
+      // Handle case where messages were deleted
+      lastMessageCount.current = messages.length;
+    }
+  }, [messages.length, scrollToBottom]);
+
+  // Initial scroll to bottom on first load
+  useEffect(() => {
+    scrollToBottom({ behavior: 'auto' });
+    lastMessageCount.current = messages.length;
+  }, [scrollToBottom]);
 
 
   // Initialize user and load conversations
@@ -695,23 +723,38 @@ export default function ChatPage() {
     : 'Demo Mode'
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-blue-50/20 to-purple-50/20">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 relative z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="bg-background/80 backdrop-blur border-b border-border/50 relative z-50 shadow-sm">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
-              <Link href="/" className="text-2xl font-bold text-gray-800">
-                Voice<span className="text-blue-600">Care</span>
-              </Link>
-              {activeConversation && (
-                <div className="flex items-center space-x-2">
-                  <Users className="w-5 h-5 text-blue-600" />
-                  <span className="text-gray-800">
-                    {getOtherParticipant(activeConversation)?.name}
-                  </span>
+              <Link href="/" className="flex items-center space-x-2 group">
+                <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
+                  <Heart className="w-5 h-5 text-white" />
                 </div>
-              )}
+                <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                  VoiceCare
+                </span>
+              </Link>
+              <div className="flex items-center space-x-4">
+                {activeConversation && (
+                  <div className="flex items-center space-x-2 bg-accent/20 rounded-full px-3 py-1">
+                    <Users className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium text-foreground">
+                      {getOtherParticipant(activeConversation)?.name}
+                    </span>
+                  </div>
+                )}
+                <div className="h-6 w-px bg-border/50" />
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center text-xs font-medium text-white">
+                    {user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                  </div>
+                  <span className="text-sm font-medium text-foreground">{user.name}</span>
+                  <span className="text-xs text-muted-foreground">• {user.role}</span>
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center space-x-4">
@@ -755,19 +798,9 @@ export default function ChatPage() {
                 {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
               </button>
 
-              <div className="flex items-center space-x-2">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm bg-blue-500`}>
-                  {user.name.split(' ').map(n => n[0]).join('')}
-                </div>
-                <div className="text-gray-800">
-                  <div className="font-medium">{user.name}</div>
-                  <div className="text-xs text-gray-500">{user.role}</div>
-                </div>
-              </div>
-
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 rounded-lg text-sm bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+                className="px-4 py-1.5 bg-background hover:bg-accent/50 text-foreground rounded-full text-sm font-medium border border-border/50 transition-colors"
               >
                 Logout
               </button>
@@ -777,50 +810,64 @@ export default function ChatPage() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8">
+      <div className="flex-1 flex flex-col max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
         {/* Messages Area */}
-        <div className="flex-1 py-6 overflow-y-auto">
-          {messages.length === 0 ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="text-6xl mb-4">💬</div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                  Start Your Conversation
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  Press the microphone to record your voice message.
-                  <br />
-                  It will be automatically translated for your recipient.
-                </p>
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 max-w-md mx-auto">
-                  <div className="text-sm text-gray-700">
-                    <strong>Your language:</strong> {user.preferred_lang.toUpperCase()}
-                    <br />
-                    <strong>Translation:</strong> Automatic
-                    <br />
-                    <strong>Voice:</strong> {(() => {
-                      const prov = modelInfo?.tts?.provider || 'unknown'
-                      if (prov === 'openai') {
-                        const model = modelInfo?.tts?.model || 'tts-1'
-                        const voice = modelInfo?.tts?.voice ? ` (${modelInfo.tts.voice})` : ''
-                        return `OpenAI ${model}${voice}`
-                      }
-                      if (prov === 'elevenlabs') {
-                        return 'ElevenLabs Premium'
-                      }
-                      if (prov === 'browser') {
-                        return 'Browser TTS'
-                      }
-                      return 'Unknown'
-                    })()}
-                    <br />
-                    <strong>Mode:</strong> {useWebSocketMode ? 'Real-time' : 'Demo'}
+        <div className="relative flex-1 overflow-y-auto rounded-lg shadow-sm p-4 mb-6 border border-blue-100 bg-cover bg-center" style={{ background: 'linear-gradient(0deg, rgba(239, 246, 255, 0.2), rgba(239, 246, 255, 0.2)), url(/background.png) repeat' }}>          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full py-12">
+              <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                <MessageCircle className="w-12 h-12 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-3">
+                Start Your Conversation
+              </h3>
+              <p className="text-muted-foreground text-center mb-8 max-w-md">
+                Press the microphone to record your voice message.
+                It will be automatically translated for your recipient.
+              </p>
+              
+              <div className="bg-accent/10 border border-border/50 rounded-xl p-6 w-full max-w-md">
+                <h4 className="font-medium text-foreground mb-4 flex items-center">
+                  <Settings2 className="w-5 h-5 mr-2 text-primary" />
+                  Current Settings
+                </h4>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Your Language:</span>
+                    <span className="font-medium text-foreground">{user.preferred_lang.toUpperCase()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Translation:</span>
+                    <span className="font-medium text-foreground">Automatic</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Voice:</span>
+                    <span className="font-medium text-foreground">
+                      {(() => {
+                        const prov = modelInfo?.tts?.provider || 'unknown';
+                        if (prov === 'openai') {
+                          const model = modelInfo?.tts?.model || 'tts-1';
+                          const voice = modelInfo?.tts?.voice ? ` (${modelInfo.tts.voice})` : '';
+                          return `OpenAI ${model}${voice}`;
+                        }
+                        if (prov === 'elevenlabs') return 'ElevenLabs Premium';
+                        if (prov === 'browser') return 'Browser TTS';
+                        return 'Default';
+                      })()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Mode:</span>
+                    <span className={`font-medium ${
+                      useWebSocketMode ? 'text-green-500' : 'text-amber-500'
+                    }`}>
+                      {useWebSocketMode ? 'Real-time' : 'Demo'}
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-4">
               {messages.map((message) => (
                 <MessageBubble
                   key={message.id}
@@ -838,24 +885,30 @@ export default function ChatPage() {
 
         {/* Error/Status Message */}
         {error && (
-          <div className={`rounded-xl p-4 mb-4 ${
-            error.includes('Demo mode') 
-              ? 'bg-blue-50 border border-blue-100'
-              : 'bg-red-50 border border-red-100'
+          <div className={`rounded-xl p-4 mb-6 ${
+            error.includes('Demo mode')
+              ? 'bg-blue-500/10 border border-blue-500/20'
+              : 'bg-red-500/10 border border-red-500/20'
           }`}>
-            <p className={error.includes('Demo mode') ? 'text-blue-600' : 'text-red-600'}>
+            <p className={`flex items-center text-sm ${
+              error.includes('Demo mode') ? 'text-blue-500' : 'text-red-500'
+            }`}>
+              {error.includes('Demo mode') ? (
+                <Info className="w-4 h-4 mr-2" />
+              ) : (
+                <AlertCircle className="w-4 h-4 mr-2" />
+              )}
               {error}
             </p>
           </div>
         )}
 
         {/* Recording Area */}
-        <div className="py-6 border-t border-white/10">
-          <div className="flex justify-center">
+<div className="relative flex-1 overflow-y-auto rounded-lg shadow-sm p-4 mb-6 border border-blue-100 bg-cover bg-center" style={{ background: 'linear-gradient(0deg, rgba(239, 246, 255, 0.2), rgba(239, 246, 255, 0.2)), url(/background.png) repeat' }}>          <div className="flex justify-center">
             {isTranscribing ? (
-              <div className="flex items-center space-x-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400"></div>
-                <span className="text-gray-800">Processing voice message...</span>
+              <div className="flex items-center space-x-3 px-4 py-2 bg-accent/20 rounded-full">
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent"></div>
+                <span className="text-foreground text-sm">Processing voice message...</span>
               </div>
             ) : (
               <AudioRecorder
@@ -870,12 +923,17 @@ export default function ChatPage() {
 
           {/* Recording Instructions */}
           {!isRecording && !isTranscribing && (
-            <div className="text-center mt-4">
-              <p className="text-gray-600 text-sm">
+            <div className="text-center mt-3">
+              <p className="text-sm text-muted-foreground">
                 {useWebSocketMode 
                   ? (isConnected 
                       ? 'Press the microphone to start recording'
-                      : 'WebSocket disconnected - using demo mode'
+                      : (
+                        <span className="flex items-center justify-center text-amber-500">
+                          <WifiOff className="w-4 h-4 mr-1.5" />
+                          WebSocket disconnected - using demo mode
+                        </span>
+                      )
                     )
                   : 'Demo mode - STT and translation only'
                 }
@@ -883,9 +941,10 @@ export default function ChatPage() {
               {user.role === 'admin' && (
                 <Link
                   href="/admin"
-                  className="text-blue-600 hover:text-gray-500 text-sm underline mt-2 inline-block"
+                  className="inline-flex items-center text-sm text-primary hover:text-primary/80 mt-2 transition-colors"
                 >
-                  Go to Admin Dashboard
+                  <Settings className="w-4 h-4 mr-1.5" />
+                  Admin Dashboard
                 </Link>
               )}
             </div>

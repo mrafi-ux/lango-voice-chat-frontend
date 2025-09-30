@@ -153,8 +153,8 @@ export default function AudioRecorder({
         className={`
           relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300
           ${isRecording 
-            ? 'bg-red-500 hover:bg-red-600 animate-pulse scale-110' 
-            : 'btn-primary hover:scale-105'
+            ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 animate-pulse scale-110' 
+            : 'bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 hover:scale-105'
           }
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
           ${isInitializing ? 'animate-spin' : ''}
@@ -170,7 +170,7 @@ export default function AudioRecorder({
         
         {/* Recording pulse ring */}
         {isRecording && (
-          <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-30" />
+          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-red-500/30 to-red-600/30 animate-ping" />
         )}
       </button>
 

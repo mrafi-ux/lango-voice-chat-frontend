@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Heart } from 'lucide-react'
 
 interface User {
   id: string
@@ -54,14 +55,19 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-br from-background via-blue-50/20 to-purple-50/20">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100">
+      <div className="bg-white/80 backdrop-blur border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
-              <Link href="/" className="text-2xl font-bold text-gray-800">
-                Voice<span className="text-blue-600">Care</span>
+              <Link href="/" className="flex items-center space-x-2 group">
+                <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center shadow-glow">
+                  <Heart className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent group-hover:opacity-90 transition-opacity">
+                  VoiceCare
+                </span>
               </Link>
               <div className="text-gray-600 text-sm">Admin Dashboard</div>
             </div>
@@ -90,7 +96,7 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {/* Stats Cards */}
-          <div className="bg-white rounded-xl p-6 border border-gray-100">
+          <div className="bg-white/90 backdrop-blur rounded-xl p-6 border border-gray-100 shadow-card">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm">Total Users</p>
@@ -100,7 +106,7 @@ export default function AdminPage() {
             </div>
           </div>
           
-          <div className="bg-white rounded-xl p-4 border border-gray-100">
+          <div className="bg-white/90 backdrop-blur rounded-xl p-4 border border-gray-100 shadow-card">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm">Active Conversations</p>
@@ -110,7 +116,7 @@ export default function AdminPage() {
             </div>
           </div>
           
-          <div className="bg-white rounded-xl p-4 border border-gray-100">
+          <div className="bg-white/90 backdrop-blur rounded-xl p-4 border border-gray-100 shadow-card">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm">Messages Today</p>
@@ -122,22 +128,22 @@ export default function AdminPage() {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-2xl p-8 mb-8 border border-gray-100">
+        <div className="bg-white/90 backdrop-blur rounded-2xl p-8 mb-8 border border-gray-100 shadow-card">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Quick Actions</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <button className="bg-white border border-gray-200 text-gray-700 p-4 rounded-xl text-center hover:bg-gray-50 transition-all">
+            <button className="bg-white/80 border border-gray-200 text-gray-700 p-4 rounded-xl text-center hover:bg-white transition-all shadow-sm">
               <div className="text-2xl mb-2">👤</div>
               <div className="font-medium">Manage Users</div>
             </button>
-            <button className="bg-white border border-gray-200 text-gray-700 p-4 rounded-xl text-center hover:bg-gray-50 transition-all">
+            <button className="bg-white/80 border border-gray-200 text-gray-700 p-4 rounded-xl text-center hover:bg-white transition-all shadow-sm">
               <div className="text-2xl mb-2">💬</div>
               <div className="font-medium">View Conversations</div>
             </button>
-            <Link href="/settings/languages" className="bg-white border border-gray-200 text-gray-700 p-4 rounded-xl text-center hover:bg-gray-50 transition-all">
+            <Link href="/settings/languages" className="bg-white/80 border border-gray-200 text-gray-700 p-4 rounded-xl text-center hover:bg-white transition-all shadow-sm">
               <div className="text-2xl mb-2">🌍</div>
               <div className="font-medium">Language Settings</div>
             </Link>
-            <button className="bg-white border border-gray-200 text-gray-700 p-4 rounded-xl text-center hover:bg-gray-50 transition-all">
+            <button className="bg-white/80 border border-gray-200 text-gray-700 p-4 rounded-xl text-center hover:bg-white transition-all shadow-sm">
               <div className="text-2xl mb-2">📈</div>
               <div className="font-medium">Analytics</div>
             </button>
@@ -145,7 +151,7 @@ export default function AdminPage() {
         </div>
 
         {/* System Status */}
-        <div className="bg-white rounded-2xl p-8 border border-gray-100">
+        <div className="bg-white/90 backdrop-blur rounded-2xl p-8 border border-gray-100 shadow-card">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">System Status</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
