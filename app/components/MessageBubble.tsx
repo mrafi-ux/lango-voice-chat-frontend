@@ -129,35 +129,37 @@ export default function MessageBubble({
   }
 
   return (
-    <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-4 animate-slide-up`}>
+    <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-4 px-4`}>
       <div className={`
         max-w-xs lg:max-w-md px-4 py-3 rounded-2xl shadow-sm
         ${isOwnMessage 
-          ? 'bg-blue-500 text-white ml-12' 
-          : 'bg-white text-gray-800 border border-gray-200 mr-12'
+          ? 'bg-gradient-to-r from-primary to-primary/90 text-white ml-12' 
+          : 'bg-background text-foreground border border-border/50 mr-12'
         }
-        transform transition-all duration-300 hover:scale-[1.02]
+        transform transition-all duration-200 hover:shadow-md
       `}>
-        {/* Sender Info (for received messages) */}
+        {/* Sender Info */}
         {!isOwnMessage && (
           <div className="flex items-center space-x-2 mb-2">
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold text-white bg-blue-500`}>
+            <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold text-white bg-gradient-to-r from-primary to-accent">
               {message.sender_name.split(' ').map(n => n[0]).join('')}
             </div>
-            <span className="text-sm font-medium text-gray-700">{message.sender_name}</span>
-            <span className={`text-xs ${getRoleColor(message.sender_role)}`}>
-              {message.sender_role}
-            </span>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-medium">{message.sender_name}</span>
+              <span className={`text-xs bg-accent/20 text-foreground/80 px-2 py-0.5 rounded-full`}>
+                {message.sender_role.charAt(0).toUpperCase() + message.sender_role.slice(1)}
+              </span>
+            </div>
           </div>
         )}
 
-        {/* Language Translation Badge */}
+        {/* Language & Audio Controls */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-2">
             <span className={`text-xs px-2 py-1 rounded-full ${
               isOwnMessage 
-                ? 'bg-white/20 text-white' 
-                : 'bg-gray-100 text-gray-600'
+                ? 'bg-white/20 text-white/90' 
+                : 'bg-accent/20 text-foreground/80'
             }`}>
               {isOwnMessage 
                 ? message.source_lang.toUpperCase()
@@ -177,11 +179,11 @@ export default function MessageBubble({
               className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
                 isOwnMessage 
                   ? 'bg-white/20 hover:bg-white/30' 
-                  : 'bg-gray-100 hover:bg-gray-200'
+                  : 'bg-accent/20 hover:bg-accent/30'
               }`}
               title={message.audio_url ? 'Play audio' : 'Generate and play audio'}
             >
-              <Volume2 className={`w-3 h-3 ${isOwnMessage ? 'text-white' : 'text-gray-600'}`} />
+              <Volume2 className={`w-3 h-3 ${isOwnMessage ? 'text-white' : 'text-foreground'}`} />
             </button>
           </div>
         </div>
@@ -189,39 +191,41 @@ export default function MessageBubble({
         {/* Audio Player (if audio available) */}
         {message.audio_url && (
           <div className={`flex items-center space-x-3 mb-3 p-3 rounded-xl ${
-            isOwnMessage ? 'bg-white/10' : 'bg-gray-50'
+            isOwnMessage ? 'bg-white/10' : 'bg-accent/10'
           }`}>
             <button
               onClick={handlePlayPause}
               className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
                 isOwnMessage 
                   ? 'bg-white/20 hover:bg-white/30' 
-                  : 'bg-gray-200 hover:bg-gray-300'
+                  : 'bg-accent/20 hover:bg-accent/30'
               }`}
             >
               {isPlaying ? (
-                <Pause className={`w-5 h-5 ${isOwnMessage ? 'text-white' : 'text-gray-600'}`} />
+                <Pause className={`w-4 h-4 ${isOwnMessage ? 'text-white' : 'text-foreground'}`} />
               ) : (
-                <Play className={`w-5 h-5 ml-0.5 ${isOwnMessage ? 'text-white' : 'text-gray-600'}`} />
+                <Play className={`w-4 h-4 ${isOwnMessage ? 'text-white' : 'text-foreground'}`} />
               )}
             </button>
-            
-            {/* Waveform/Progress Bar */}
+
+            {/* Progress Bar */}
             <div className="flex-1">
-              <div className="flex items-center space-x-2">
-                <Volume2 className={`w-4 h-4 ${isOwnMessage ? 'text-white' : 'text-gray-500'}`} />
-                <div className={`flex-1 h-1 rounded-full overflow-hidden ${
-                  isOwnMessage ? 'bg-white/20' : 'bg-gray-200'
-                }`}>
-                  <div 
-                    className={`h-full transition-all duration-100 ${
-                      isOwnMessage ? 'bg-white' : 'bg-blue-500'
-                    }`}
-                    style={{ width: `${playbackProgress}%` }}
-                  />
-                </div>
-                <span className={`text-xs ${isOwnMessage ? 'text-white/80' : 'text-gray-500'}`}>
-                  {formatDuration(message.duration)}
+              <div className={`h-1.5 rounded-full overflow-hidden ${
+                isOwnMessage ? 'bg-white/30' : 'bg-accent/20'
+              }`}>
+                <div 
+                  className={`h-full ${
+                    isOwnMessage ? 'bg-white' : 'bg-primary'
+                  }`}
+                  style={{ width: `${playbackProgress}%` }}
+                />
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className={`text-xs ${isOwnMessage ? 'text-white/70' : 'text-muted-foreground'}`}>
+                  {formatDuration(audioRef.current?.currentTime || 0)}
+                </span>
+                <span className={`text-xs ${isOwnMessage ? 'text-white/70' : 'text-muted-foreground'}`}>
+                  {formatDuration(audioRef.current?.duration || message.duration)}
                 </span>
               </div>
             </div>
@@ -229,25 +233,20 @@ export default function MessageBubble({
         )}
 
         {/* Message Text */}
-        <div className="space-y-2">
-          <div className="text-sm leading-relaxed">
-            {isOwnMessage 
-              ? message.text_source
-              : (message.text_translated || message.text_source)
-            }
-          </div>
+        <div className={`mb-2 ${isOwnMessage ? 'text-white' : 'text-foreground'}`}>
+          <p className="text-sm">
+            {isOwnMessage ? message.text_source : (message.text_translated || message.text_source)}
+          </p>
         </div>
 
-        {/* Message Footer */}
-        <div className={`flex items-center justify-between mt-2 text-xs ${
-          isOwnMessage ? 'text-white/80' : 'text-gray-500'
-        }`}>
-          <span>{formatTime(message.created_at)}</span>
-          {isOwnMessage && (
-            <div className="flex items-center space-x-1">
-              {getStatusIcon()}
-            </div>
-          )}
+        {/* Timestamp and Status */}
+        <div className={`flex items-center justify-end mt-2 pt-2 ${isOwnMessage ? 'border-t border-white/20' : 'border-t border-border/30'}`}>
+          <div className="flex items-center space-x-2">
+            {isOwnMessage && getStatusIcon()}
+            <span className={`text-xs ${isOwnMessage ? 'text-white/70' : 'text-muted-foreground'}`}>
+              {formatTime(message.created_at)}
+            </span>
+          </div>
         </div>
       </div>
     </div>
