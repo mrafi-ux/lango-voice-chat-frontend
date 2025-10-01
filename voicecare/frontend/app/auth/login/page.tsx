@@ -1,10 +1,12 @@
 'use client';
-
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { LogIn, Mail, Lock, AlertCircle, Loader2, User } from 'lucide-react';
+import { LogIn, Mail, Lock, AlertCircle, Loader2, User, ArrowRight } from 'lucide-react';
 import { authService } from '../../auth';
+import { Button } from '../../../src/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../src/components/ui/card';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -47,87 +49,100 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/20 p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card p-8 w-full max-w-md"
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md"
       >
-        <div className="text-center mb-8">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full mb-4"
-          >
-            <User className="w-8 h-8 text-white" />
-          </motion.div>
-          <h1 className="text-2xl font-bold text-white mb-2">Welcome Back</h1>
-          <p className="text-gray-300">Sign in to continue</p>
-        </div>
-
-        {error && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 mb-4"
-          >
-            <AlertCircle className="w-4 h-4 text-red-400" />
-            <span className="text-red-300 text-sm">{error}</span>
-          </motion.div>
-        )}
-
-        <div className="space-y-4 mb-6">
-          <div>
-            <label className="block text-sm text-purple-100 mb-1">Email</label>
-            <div className="relative">
-              <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-purple-300" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg py-3 pl-10 pr-3 text-white placeholder-purple-300/60 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="you@example.com"
-                autoComplete="email"
-              />
+        <Card className="border-0 shadow-lg overflow-hidden">
+          <CardHeader className="text-center space-y-4 pb-2">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: 'spring' }}
+              className="mx-auto w-20 h-20 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center"
+            >
+              <User className="w-10 h-10 text-white" />
+            </motion.div>
+            <div className="space-y-2">
+              <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
+           
             </div>
-          </div>
+          </CardHeader>
 
-          <div>
-            <label className="block text-sm text-purple-100 mb-1">Password</label>
-            <div className="relative">
-              <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-purple-300" />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg py-3 pl-10 pr-3 text-white placeholder-purple-300/60 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Enter your password"
-                autoComplete="current-password"
-              />
+          <CardContent className="space-y-6">
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm"
+              >
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{error}</span>
+              </motion.div>
+            )}
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium leading-none">Email</label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-background border border-input rounded-md py-2 pl-10 pr-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium leading-none">Password</label>
+                
+                </div>
+                <div className="relative">
+                  <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-background border border-input rounded-md py-2 pl-10 pr-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    placeholder="Enter your password"
+                    autoComplete="current-password"
+                  />
+                </div>
+              </div>
+
+              <Button
+                onClick={handleLogin}
+                disabled={loading}
+                className="w-full mt-4 bg-primary/90 hover:bg-primary/90 group"
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : null}
+                {loading ? 'Signing In...' : 'Sign In'}
+                <ArrowRight className="ml-2 w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </Button>
+
+              <p className="text-center text-sm text-muted-foreground mt-4">
+                Don't have an account?{' '}
+                <Link 
+                  href="/auth/register" 
+                  className="font-medium text-primary/80 hover:text-primary transition-colors "
+                >
+                  Sign up
+                </Link>
+              </p>
             </div>
-          </div>
-        </div>
-
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={handleLogin}
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-3 px-4 rounded-lg font-medium hover:from-indigo-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-        >
-          {loading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <LogIn className="w-4 h-4" />
-          )}
-          {loading ? 'Signing In...' : 'Sign In'}
-        </motion.button>
-
-        <div className="mt-6 text-center">
-          <p className="text-gray-400 text-sm">Use your registered email and password</p>
-        </div>
+          </CardContent>
+        </Card>
       </motion.div>
     </div>
   );
-} 
+}

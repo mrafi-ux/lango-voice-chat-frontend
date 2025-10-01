@@ -66,20 +66,20 @@ export default function LanguageCapabilitiesPage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="glass-card border-b border-white/10">
+      <div className="bg-white border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
-              <Link href="/" className="text-2xl font-bold text-white">
-                Voice<span className="text-purple-300">Care</span>
+              <Link href="/" className="text-2xl font-bold text-gray-800">
+                Voice<span className="text-blue-600">Care</span>
               </Link>
-              <div className="text-purple-100">Language Capabilities</div>
+              <div className="text-gray-600 text-sm">Language Capabilities</div>
             </div>
             <Link
               href="/"
-              className="btn-secondary px-4 py-2 rounded-lg text-sm"
+              className="px-4 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors border border-gray-200"
             >
               Back to Home
             </Link>
@@ -90,72 +90,72 @@ export default function LanguageCapabilitiesPage() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-white mb-4">
+          <h1 className="text-3xl font-bold text-gray-800 mb-4">
             Language Capabilities
           </h1>
-          <p className="text-xl text-purple-100 max-w-2xl mx-auto">
+          <p className="text-gray-600 max-w-2xl mx-auto">
             Comprehensive overview of supported languages across our AI-powered voice processing pipeline
           </p>
         </div>
 
         {loading ? (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400 mx-auto"></div>
-            <p className="text-purple-100 mt-4">Loading capabilities...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="text-gray-600 mt-4">Loading capabilities...</p>
           </div>
         ) : error ? (
-          <div className="glass-card rounded-2xl p-8 text-center">
-            <div className="text-red-400 mb-4">⚠️</div>
-            <h3 className="text-xl font-semibold text-white mb-2">Error Loading Data</h3>
-            <p className="text-purple-100">{error}</p>
+          <div className="bg-white rounded-2xl p-8 text-center border border-gray-100">
+            <div className="text-red-500 mb-4">⚠️</div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">Error Loading Data</h3>
+            <p className="text-gray-600">{error}</p>
           </div>
         ) : capabilities ? (
           <div className="space-y-8">
             {/* Speech-to-Text */}
-            <div className="glass-card rounded-2xl p-8">
+            <div className="bg-white rounded-2xl p-8 border border-gray-100 mb-8">
               <div className="flex items-center mb-6">
-                <div className="text-3xl mr-4">🎤</div>
+                <div className="text-3xl mr-4 opacity-80">🎤</div>
                 <div>
-                  <h2 className="text-2xl font-bold text-white">Speech-to-Text (Whisper)</h2>
-                  <p className="text-purple-100">Supported input languages for voice recognition</p>
+                  <h2 className="text-2xl font-bold text-gray-800">Speech-to-Text (Whisper)</h2>
+                  <p className="text-gray-600">Supported input languages for voice recognition</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {capabilities.stt_languages.map((lang) => (
-                  <div key={lang} className="bg-white/5 rounded-xl p-4 text-center">
-                    <div className="font-medium text-white">{getLanguageName(lang)}</div>
-                    <div className="text-sm text-purple-200">{lang.toUpperCase()}</div>
+                  <div key={lang} className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100 hover:bg-gray-50 transition-colors">
+                    <div className="font-medium text-gray-800">{getLanguageName(lang)}</div>
+                    <div className="text-sm text-gray-500">{lang.toUpperCase()}</div>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Translation */}
-            <div className="glass-card rounded-2xl p-8">
+            <div className="bg-white rounded-2xl p-8 border border-gray-100 mb-8">
               <div className="flex items-center mb-6">
                 <div className="text-3xl mr-4">🌍</div>
                 <div>
-                  <h2 className="text-2xl font-bold text-white">Translation (LibreTranslate)</h2>
-                  <p className="text-purple-100">Real-time translation between languages</p>
+                  <h2 className="text-2xl font-bold text-gray-800">Translation (LibreTranslate)</h2>
+                  <p className="text-gray-600">Real-time translation between languages</p>
                 </div>
               </div>
               <div className="grid md:grid-cols-2 gap-8">
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-4">Source Languages</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Source Languages</h3>
                   <div className="grid grid-cols-2 gap-2">
                     {capabilities.translation_languages.source.map((lang) => (
-                      <div key={lang} className="bg-white/5 rounded-lg p-2 text-center">
-                        <div className="text-white text-sm">{getLanguageName(lang)}</div>
+                      <div key={lang} className="bg-gray-50 rounded-lg p-2 text-center border border-gray-100">
+                        <div className="text-gray-800 text-sm">{getLanguageName(lang)}</div>
                       </div>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-4">Target Languages</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Target Languages</h3>
                   <div className="grid grid-cols-2 gap-2">
                     {capabilities.translation_languages.target.map((lang) => (
-                      <div key={lang} className="bg-white/5 rounded-lg p-2 text-center">
-                        <div className="text-white text-sm">{getLanguageName(lang)}</div>
+                      <div key={lang} className="bg-gray-50 rounded-lg p-2 text-center border border-gray-100">
+                        <div className="text-gray-800 text-sm">{getLanguageName(lang)}</div>
                       </div>
                     ))}
                   </div>
@@ -164,12 +164,12 @@ export default function LanguageCapabilitiesPage() {
             </div>
 
             {/* Text-to-Speech */}
-            <div className="glass-card rounded-2xl p-8">
+            <div className="bg-white rounded-2xl p-8 border border-gray-100 mb-8">
               <div className="flex items-center mb-6">
                 <div className="text-3xl mr-4">💬</div>
                 <div>
-                  <h2 className="text-2xl font-bold text-white">Text-to-Speech (ElevenLabs)</h2>
-                  <p className="text-purple-100">Premium voices available for natural speech synthesis</p>
+                  <h2 className="text-2xl font-bold text-gray-800">Text-to-Speech (ElevenLabs)</h2>
+                  <p className="text-gray-600">Premium voices available for natural speech synthesis</p>
                 </div>
               </div>
               <div className="space-y-6">
@@ -178,9 +178,9 @@ export default function LanguageCapabilitiesPage() {
                     <h3 className="text-lg font-semibold text-white mb-3">{language}</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                       {voices.map((voice) => (
-                        <div key={voice} className="bg-white/5 rounded-lg p-3 text-center">
-                          <div className="text-white font-medium">{voice}</div>
-                          <div className="text-xs text-purple-200">Premium Voice</div>
+                        <div key={voice} className="bg-gray-50 rounded-lg p-3 text-center border border-gray-100 hover:bg-gray-50 transition-colors">
+                          <div className="text-gray-800 font-medium">{voice}</div>
+                          <div className="text-xs text-blue-500">Premium Voice</div>
                         </div>
                       ))}
                     </div>
@@ -190,12 +190,12 @@ export default function LanguageCapabilitiesPage() {
             </div>
 
             {/* Integration Flow */}
-            <div className="glass-card rounded-2xl p-8">
+            <div className="bg-white rounded-2xl p-8 border border-gray-100 mb-8">
               <div className="flex items-center mb-6">
                 <div className="text-3xl mr-4">⚡</div>
                 <div>
-                  <h2 className="text-2xl font-bold text-white">Integration Flow</h2>
-                  <p className="text-purple-100">How our AI pipeline processes multilingual communication</p>
+                  <h2 className="text-2xl font-bold text-gray-800">Integration Flow</h2>
+                  <p className="text-gray-600">How our AI pipeline processes multilingual communication</p>
                 </div>
               </div>
               <div className="grid md:grid-cols-4 gap-6">
@@ -206,11 +206,11 @@ export default function LanguageCapabilitiesPage() {
                   { step: '4', title: 'Delivery', desc: 'Real-time audio delivered to recipient' }
                 ].map((item) => (
                   <div key={item.step} className="text-center">
-                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 text-lg font-bold text-white">
+                    <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-lg font-bold text-white">
                       {item.step}
                     </div>
-                    <h4 className="font-semibold text-white mb-2">{item.title}</h4>
-                    <p className="text-purple-100 text-sm">{item.desc}</p>
+                    <h4 className="font-semibold text-gray-800 mb-2">{item.title}</h4>
+                    <p className="text-gray-600 text-sm">{item.desc}</p>
                   </div>
                 ))}
               </div>
