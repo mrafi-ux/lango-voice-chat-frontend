@@ -20,8 +20,8 @@ export interface LoginResult {
 }
 
 export class AuthService {
-  private readonly TOKEN_KEY = 'voicecare_token';
-  private readonly USER_KEY = 'voicecare_user';
+  public readonly TOKEN_KEY = 'voicecare_token';
+  public readonly USER_KEY = 'voicecare_user';
   
   /**
    * Get stored auth token
@@ -67,7 +67,7 @@ export class AuthService {
    * Set current user in storage
    */
   setCurrentUser(user: User): void {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined') return; 
     localStorage.setItem(this.USER_KEY, JSON.stringify(user));
   }
   

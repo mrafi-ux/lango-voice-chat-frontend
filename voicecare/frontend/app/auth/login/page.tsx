@@ -25,12 +25,29 @@ export default function LoginPage() {
     setError('');
 
     try {
+     
+      authService.clearToken();
+      
       const result = await authService.login(email, password);
-      if (result.success && result.user) {
+    
+      if (result.success && result.user && result.token) {
+        
+        
+        // Double-check that the token was set correctly
+        authService.setToken(result.token);
+        authService.setCurrentUser(result.user);
+        
+    
+        // Add a small delay to ensure state is saved
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Force a full page reload to ensure all state is properly initialized
         if (result.user.role === 'admin') {
-          router.push('/admin');
+         
+          window.location.href = '/admin';
         } else {
-          router.push('/conversations');
+       
+          window.location.href = '/conversations';
         }
       } else {
         
