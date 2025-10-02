@@ -20,6 +20,7 @@ import {
 import AudioRecorder from '../components/AudioRecorder'
 import MessageBubble from '../components/MessageBubble'
 import { useWebSocket } from '../hooks/useWebSocket'
+import { apiClient } from '../api-client'
 
 interface User {
   id: string
@@ -54,9 +55,11 @@ interface Conversation {
   user_b?: User
 }
 
-export default function ChatPage() {
-  const searchParams = useSearchParams()
-  const conversationId = searchParams?.get('conversationId')
+interface ChatPageProps {
+  conversationId: string | null;
+}
+
+export default function ChatPage({ conversationId }: ChatPageProps) {
   const [user, setUser] = useState<User | null>(null)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null)
@@ -78,6 +81,7 @@ export default function ChatPage() {
 
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
 
   // WebSocket connection
@@ -94,17 +98,39 @@ export default function ChatPage() {
     }
   })
 
-  // Track the last message count to detect new messages
+  // Track scroll and message state
+  const userScrolledUp = useRef(false);
+  const lastScrollTop = useRef(0);
   const lastMessageCount = useRef(0);
 
-  // Auto-scroll to bottom only when new messages arrive
-  const scrollToBottom = useCallback(({ behavior = 'smooth' }: { behavior?: 'auto' | 'smooth' } = {}) => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
+  // Handle scroll events to detect if user has scrolled up
+  const handleScroll = useCallback(() => {
+    if (messagesContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      
+      // Check if user has scrolled up (current scroll position is not at the bottom)
+      const isAtBottom = scrollHeight - (scrollTop + clientHeight) < 50; // 50px threshold
+      userScrolledUp.current = !isAtBottom;
+      lastScrollTop.current = scrollTop;
+    }
   }, []);
 
+  // Auto-scroll to bottom only when new messages arrive and user is at the bottom
+  const scrollToBottom = useCallback(({ behavior = 'smooth' }: { behavior?: 'auto' | 'smooth' } = {}) => {
+    if (messagesContainerRef.current) {
+      const { scrollHeight, clientHeight } = messagesContainerRef.current;
+      
+      // Only auto-scroll if user is at the bottom or very close
+      if (!userScrolledUp.current || (scrollHeight - (lastScrollTop.current + clientHeight) < 100)) {
+        messagesEndRef.current?.scrollIntoView({ behavior });
+      }
+    }
+  }, []);
+
+  // Handle new messages
   useEffect(() => {
-    // Only auto-scroll if a new message was added (not if messages were just updated)
     if (messages.length > lastMessageCount.current) {
+      // Only auto-scroll if a new message was added
       scrollToBottom({ behavior: 'smooth' });
       lastMessageCount.current = messages.length;
     } else if (messages.length < lastMessageCount.current) {
@@ -117,7 +143,19 @@ export default function ChatPage() {
   useEffect(() => {
     scrollToBottom({ behavior: 'auto' });
     lastMessageCount.current = messages.length;
-  }, [scrollToBottom]);
+    
+    // Add scroll event listener
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+    }
+    
+    return () => {
+      if (container) {
+        container.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, [scrollToBottom, handleScroll]);
 
 
   // Initialize user and load conversations
@@ -128,25 +166,63 @@ export default function ChatPage() {
       .then(res => res.ok ? res.json() : Promise.reject(new Error('Failed to fetch models')))
       .then(data => setModelInfo(data))
       .catch(err => console.warn('Model info load failed:', err))
-  }, [])
+  }, [conversationId])
 
-  // Sync URL with active conversation
+  // Redirect to conversations page with the conversation ID
   useEffect(() => {
     if (activeConversation && router) {
-      // Update URL without causing a page reload
-      const newUrl = `/chat?conversationId=${activeConversation.id}`;
+      // Update URL to use the conversations route
+      const newUrl = `/conversations?conversationId=${activeConversation.id}`;
       if (window.location.pathname + window.location.search !== newUrl) {
-        window.history.pushState({}, '', newUrl);
+        router.push(newUrl);
       }
     }
   }, [activeConversation, router]);
-
-  // Load messages when active conversation changes
+  
+  // Handle direct access to /chat?conversationId=...
   useEffect(() => {
-    if (activeConversation) {
-      loadMessages(activeConversation.id)
+    if (conversationId && router) {
+      // Redirect to conversations page with the same conversationId
+      router.push(`/conversations?conversationId=${conversationId}`);
+    } else if (router) {
+      // If no conversationId, redirect to conversations page
+      router.push('/conversations');
     }
-  }, [activeConversation])
+  }, [conversationId, router]);
+
+  // Load messages when active conversation changes or when conversationId prop changes
+  useEffect(() => {
+    const loadConversationAndMessages = async () => {
+      if (activeConversation) {
+        await loadMessages(activeConversation.id);
+      } else if (conversationId) {
+        // If we have a conversationId from URL but no active conversation,
+        // load all conversations and find the matching one
+        try {
+          const res = await apiClient.getConversations();
+          if (res.success && res.data) {
+            const conversations = res.data as unknown as Conversation[];
+            const conversation = conversations.find(c => c.id === conversationId);
+            
+            if (conversation) {
+              setActiveConversation(conversation);
+            } else {
+              console.error('Conversation not found');
+              router.push('/conversations');
+            }
+          } else {
+            console.error('Failed to load conversations:', res.error);
+            router.push('/conversations');
+          }
+        } catch (error) {
+          console.error('Error loading conversations:', error);
+          router.push('/conversations');
+        }
+      }
+    };
+
+    loadConversationAndMessages();
+  }, [activeConversation, conversationId, router]);
   
   // Handle conversation selection
   const handleConversationSelect = useCallback((conversation: Conversation) => {
@@ -180,6 +256,11 @@ export default function ChatPage() {
 
   const loadConversations = async (userId: string) => {
     try {
+      // Get conversationId from URL if available
+      const searchParams = new URLSearchParams(window.location.search);
+      const urlConversationId = searchParams.get('conversationId');
+      const targetConversationId = conversationId || urlConversationId;
+      
       // Try to load conversations from API first
       const response = await fetch('/api/v1/conversations/', {
         headers: {
@@ -204,18 +285,23 @@ export default function ChatPage() {
           
           setConversations(formattedConversations);
           
-          // If we have a conversationId in URL, find and set that conversation
-          if (conversationId) {
-            const targetConversation = formattedConversations.find(c => c.id === conversationId);
+          // If we have a target conversationId, find and set that conversation
+          if (targetConversationId) {
+            const targetConversation = formattedConversations.find(c => c.id === targetConversationId);
             if (targetConversation) {
               setActiveConversation(targetConversation);
               return;
             }
           }
           
-          // Otherwise auto-select first conversation
+          // If no specific conversation is requested, use the first one
           if (formattedConversations.length > 0) {
             setActiveConversation(formattedConversations[0]);
+            // Update URL to reflect the selected conversation
+            if (!targetConversationId) {
+              const newUrl = `/chat?conversationId=${formattedConversations[0].id}`;
+              window.history.replaceState({}, '', newUrl);
+            }
           }
           return;
         }
@@ -318,7 +404,9 @@ export default function ChatPage() {
       console.log(`Message from ${message.message.sender?.name}: "${message.message.text_source}" → "${message.message.text_translated}"`)
       console.log(`Language: ${message.message.source_lang} → ${message.message.target_lang}`)
       
-      const isOwnMessage = user && message.message.sender_id === user.id
+      // Determine if this is our own message
+      const isOwnMessage = user && message.message.sender_id === user.id;
+      
       const newMessage: Message = {
         id: message.message.id,
         sender_id: message.message.sender_id,
@@ -333,11 +421,12 @@ export default function ChatPage() {
         status: 'delivered',
         created_at: message.message.created_at,
         duration: message.play_now?.duration
-      }
-
+      };
+      
+      // Update messages state
       setMessages(prev => {
         // If this is our own message, replace the last optimistic temp message instead of duplicating
-        if (user && newMessage.sender_id === user.id) {
+        if (isOwnMessage) {
           const idx = [...prev].reverse().findIndex(m => m.sender_id === user.id && m.id.startsWith('temp-') && m.text_source === newMessage.text_source)
           if (idx !== -1) {
             const realIdx = prev.length - 1 - idx
@@ -356,29 +445,61 @@ export default function ChatPage() {
         console.log(`Adding message to chat: ${newMessage.sender_name} → ${newMessage.text_translated}`)
         return [...prev, newMessage]
       })
-
-      // Generate TTS audio URL for the message and auto-play if not muted
-      if (message.play_now) {
-        console.log(`Auto-playing TTS: "${message.play_now.text}" in ${message.play_now.lang}`)
-        generateTTSAudio(message.play_now.text, message.play_now.lang, newMessage.id, !isMuted, message.play_now.sender_gender, message.play_now.sender_id)
+      
+      // Only handle audio for received messages (not our own)
+      if (!isOwnMessage) {
+        // For received messages, use translated text in recipient's preferred language
+        const textToSpeak = message.message.text_translated || message.message.text_source;
+        const langToUse = user?.preferred_lang || 'en';
+        const voiceUserId = message.message.sender_id; // Use sender's voice
+        const shouldAutoPlay = !isMuted; // Auto-play if not muted
+        
+        // Generate TTS audio (will auto-play if not muted)
+        generateTTSAudio(
+          textToSpeak, 
+          langToUse, 
+          newMessage.id, 
+          shouldAutoPlay,
+          undefined, // Let the backend choose the voice
+          voiceUserId
+        ).catch(error => {
+          console.error('Error generating TTS audio for received message:', error);
+        });
+      } else if (!message.message.audio_url) {
+        // For our own messages, ensure the audio is in the cache
+        // This is needed in case the message is received via WebSocket (e.g., after reconnect)
+        generateTTSAudio(
+          message.message.text_source,
+          message.message.source_lang,
+          newMessage.id,
+          false, // Don't auto-play (already played during send)
+          undefined,
+          user?.id
+        ).catch(error => {
+          console.error('Error ensuring TTS for own message:', error);
+        });
       }
     }
   }
 
   const generateTTSAudio = async (text: string, language: string, messageId: string, autoPlay: boolean = false, senderGender?: string, senderId?: string) => {
     try {
+      const requestBody = {
+        text,
+        lang: language,
+        voice_hint: null,
+        sender_gender: senderGender,
+        sender_id: senderId
+      };
+      
+      console.log('Sending TTS request to /api/v1/tts/speak with:', requestBody);
+      
       const response = await fetch('/api/v1/tts/speak', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          text,
-          lang: language, // Fixed: use 'lang' instead of 'language'
-          voice_hint: null, // Let backend choose best voice
-          sender_gender: senderGender, // Pass sender gender for voice selection
-          sender_id: senderId // Pass sender ID for persistent gender assignment
-        })
+        body: JSON.stringify(requestBody)
       })
 
       if (response.ok) {
@@ -542,8 +663,19 @@ export default function ChatPage() {
 
         setMessages(prev => [...prev, tempMessage])
 
-        // Generate TTS for the sent message (so user can replay it)
-        generateTTSAudio(transcribedText, detectedLang, tempMessage.id, false, undefined, undefined)
+        // Generate TTS for the sent message in the original language
+        // This is what the sender will hear when they tap play
+        // We use autoPlay=true to play it immediately after generation
+        generateTTSAudio(
+          transcribedText, 
+          detectedLang, 
+          tempMessage.id, 
+          true, // Auto-play for sender
+          undefined, 
+          user.id
+        ).catch(error => {
+          console.error('Error generating sender TTS:', error);
+        });
 
         // Step 2: Send via WebSocket if connected, otherwise show demo mode
         let webSocketSent = false
@@ -555,7 +687,8 @@ export default function ChatPage() {
             text_source: transcribedText,
             source_lang: detectedLang,
             target_lang: targetLang,
-            client_sent_at: new Date().toISOString()
+            client_sent_at: new Date().toISOString(),
+            play_now: null
           }
           
           console.log('Sending voice note via WebSocket:', voiceNoteMessage)
@@ -614,8 +747,22 @@ export default function ChatPage() {
                     )
                   )
 
-                  // Generate TTS for the translated message
-                  await generateTTSAudio(translatedText, targetLang, tempMessage.id, true, undefined, undefined)
+                  // Generate TTS for the translated message (for recipient)
+                  // First generate TTS for the recipient
+                  await generateTTSAudio(translatedText, targetLang, tempMessage.id, false, undefined, undefined);
+                  
+                  // Then generate TTS for the sender in their preferred language
+                  if (user) {
+                    // For the sender, use the original text (not translated) in their preferred language
+                    await generateTTSAudio(
+                      transcribedText, // Original text
+                      user.preferred_lang, // Sender's preferred language
+                      tempMessage.id, 
+                      true, // Auto-play for sender
+                      undefined, 
+                      user.id // Sender's ID for consistent voice
+                    );
+                  }
                 }
               } else {
                 console.error('Translation API failed:', translateResponse.status)
@@ -653,11 +800,32 @@ export default function ChatPage() {
       // Generate TTS for this message
       const message = messages.find(msg => msg.id === messageId)
       if (message) {
-        // For sender's own message, use original text and source language
-        if (user && message.sender_id === user.id) {
-          generateTTSAudio(message.text_source, message.source_lang, messageId, true, undefined, undefined)
+        // For the current user, always use their preferred language
+        if (user) {
+          // If this is the sender, use original text and their preferred language
+          if (message.sender_id === user.id) {
+            generateTTSAudio(
+              message.text_source, 
+              user.preferred_lang, // Use user's preferred language
+              messageId, 
+              true, 
+              undefined, 
+              user.id
+            )
+          } else {
+            // For received messages, use translated text and recipient's preferred language
+            const textToSpeak = message.text_translated || message.text_source
+            generateTTSAudio(
+              textToSpeak, 
+              user.preferred_lang, // Use current user's preferred language
+              messageId, 
+              true, 
+              undefined, 
+              user.id
+            )
+          }
         } else {
-          // For recipient, use translated text and target language
+          // Fallback if user is not available
           const textToSpeak = message.text_translated || message.text_source
           const targetLang = message.target_lang
           generateTTSAudio(textToSpeak, targetLang, messageId, true, undefined, undefined)
@@ -686,133 +854,124 @@ export default function ChatPage() {
     }
   }
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem('voicecare_token')
     localStorage.removeItem('voicecare_user')
     router.push('/')
-  }
+  }, [router])
 
-  const getOtherParticipant = (conversation: Conversation) => {
+  const getOtherParticipant = useCallback((conversation: Conversation) => {
     if (!user) return null
     
     return {
       id: conversation.user_a_id === user.id ? conversation.user_b_id : conversation.user_a_id,
       name: conversation.user_a_id === user.id ? conversation.user_b_name : conversation.user_a_name
     }
-  }
+  }, [user])
 
-  const toggleWebSocketMode = () => {
-    setUseWebSocketMode(!useWebSocketMode)
+  const toggleWebSocketMode = useCallback(() => {
+    setUseWebSocketMode(prev => !prev)
     setError('')
-  }
+  }, [])
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!conversationId) return
+      
+      setLoading(true)
+      try {
+        // Fetch all conversations and find the active one
+        const convsRes = await apiClient.getConversations()
+        if (!convsRes.success || !convsRes.data) {
+          throw new Error(convsRes.error || 'Failed to load conversations')
+        }
+        
+        const conv = (convsRes.data as unknown as Conversation[]).find(c => c.id === conversationId)
+        if (!conv) {
+          throw new Error('Conversation not found')
+        }
+        
+        setActiveConversation(conv)
+        
+        // Fetch messages for the conversation
+        const messagesRes = await apiClient.getMessages(conversationId)
+        if (messagesRes.success && messagesRes.data) {
+          // Ensure all messages have required sender_name and sender_role
+          const processedMessages = (messagesRes.data as unknown as Message[]).map(msg => ({
+            ...msg,
+            sender_name: msg.sender_name || 'Unknown',
+            sender_role: msg.sender_role || 'user',
+            status: msg.status || 'sent',
+            source_lang: msg.source_lang || 'en',
+            target_lang: msg.target_lang || 'en',
+            text_translated: msg.text_translated || null,
+            created_at: msg.created_at || new Date().toISOString()
+          }))
+          setMessages(processedMessages)
+        }
+        
+        // Get provider info which includes model information
+        const providerRes = await apiClient.getProviderInfo()
+        if (providerRes.success && providerRes.data) {
+          setModelInfo({
+            stt: { provider: providerRes.data.stt.name },
+            tts: { provider: providerRes.data.tts.name },
+            translation: { provider: providerRes.data.translation.name }
+          })
+        }
+        
+      } catch (err) {
+        console.error('Error fetching conversation data:', err)
+        setError('Failed to load conversation. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchData()
+  }, [conversationId])
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400"></div>
+      <div className="flex-1 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     )
   }
 
-  if (!user) {
-    return null
+  if (!user || !activeConversation) {
+    return null;
+  }
+
+  if (!conversationId) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mb-4">
+          <MessageCircle className="w-8 h-8 text-primary" />
+        </div>
+        <h2 className="text-xl font-semibold text-foreground mb-2">No conversation selected</h2>
+        <p className="text-muted-foreground max-w-md mx-auto">
+          Please select a conversation from the sidebar or start a new one.
+        </p>
+      </div>
+    )
   }
 
   const connectionStatus = useWebSocketMode 
     ? (isConnected ? 'Online' : isConnecting ? 'Connecting...' : 'Offline')
-    : 'Demo Mode'
+    : 'Demo Mode';
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-blue-50/20 to-purple-50/20">
-      {/* Header */}
-      <div className="bg-background/80 backdrop-blur border-b border-border/50 relative z-50 shadow-sm">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <Link href="/" className="flex items-center space-x-2 group">
-                <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-                  <Heart className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                  VoiceCare
-                </span>
-              </Link>
-              <div className="flex items-center space-x-4">
-                {activeConversation && (
-                  <div className="flex items-center space-x-2 bg-accent/20 rounded-full px-3 py-1">
-                    <Users className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-medium text-foreground">
-                      {getOtherParticipant(activeConversation)?.name}
-                    </span>
-                  </div>
-                )}
-                <div className="h-6 w-px bg-border/50" />
-                <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center text-xs font-medium text-white">
-                    {user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                  </div>
-                  <span className="text-sm font-medium text-foreground">{user.name}</span>
-                  <span className="text-xs text-muted-foreground">• {user.role}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              {/* Connection Status */}
-              <div className="flex items-center space-x-2">
-                {useWebSocketMode ? (
-                  isConnected ? (
-                    <Wifi className="w-5 h-5 text-green-400" />
-                  ) : (
-                    <WifiOff className="w-5 h-5 text-red-400" />
-                  )
-                ) : (
-                  <AlertCircle className="w-5 h-5 text-yellow-600" />
-                )}
-                <span className={`text-sm ${
-                  useWebSocketMode 
-                    ? (isConnected ? 'text-green-400' : 'text-red-400')
-                    : 'text-yellow-600'
-                }`}>
-                  {connectionStatus}
-                </span>
-              </div>
-
-              {/* WebSocket Toggle */}
-              <button
-                onClick={toggleWebSocketMode}
-                className="text-xs bg-white border border-gray-200 hover:bg-gray-50 px-3 py-1.5 rounded-lg text-gray-700 transition-colors"
-                title={useWebSocketMode ? 'Switch to Demo Mode' : 'Switch to Real-time Mode'}
-              >
-                {useWebSocketMode ? 'Real-time' : 'Demo'}
-              </button>
-
-              {/* Audio Toggle */}
-              <button
-                onClick={() => setIsMuted(!isMuted)}
-                className={`p-2 rounded-lg transition-colors ${
-                  isMuted ? 'bg-red-50 text-red-500 border border-red-100' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-                }`}
-                title={isMuted ? 'Unmute audio' : 'Mute audio'}
-              >
-                {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-              </button>
-
-              <button
-                onClick={handleLogout}
-                className="px-4 py-1.5 bg-background hover:bg-accent/50 text-foreground rounded-full text-sm font-medium border border-border/50 transition-colors"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div className="flex flex-col h-full">
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+      <div className="flex-1 flex flex-col h-full">
         {/* Messages Area */}
-        <div className="relative flex-1 overflow-y-auto rounded-lg shadow-sm p-4 mb-6 border border-blue-100 bg-cover bg-center" style={{ background: 'linear-gradient(0deg, rgba(239, 246, 255, 0.2), rgba(239, 246, 255, 0.2)), url(/background.png) repeat' }}>          {messages.length === 0 ? (
+        <div 
+          ref={messagesContainerRef}
+          className="relative flex-1 overflow-y-auto p-4 bg-cover bg-center" 
+          style={{ background: 'linear-gradient(0deg, rgba(239, 246, 255, 0.2), rgba(239, 246, 255, 0.2)), url(/background.png) repeat' }}
+        >
+          {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-12">
               <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-6">
                 <MessageCircle className="w-12 h-12 text-primary" />
@@ -833,7 +992,7 @@ export default function ChatPage() {
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Your Language:</span>
-                    <span className="font-medium text-foreground">{user.preferred_lang.toUpperCase()}</span>
+                    <span className="font-medium text-foreground">{user?.preferred_lang?.toUpperCase()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Translation:</span>
@@ -872,8 +1031,8 @@ export default function ChatPage() {
                 <MessageBubble
                   key={message.id}
                   message={message}
-                  isOwnMessage={message.sender_id === user.id}
-                  currentUserId={user.id}
+                  isOwnMessage={message.sender_id === user?.id}
+                  currentUserId={user?.id || ''}
                   onPlayAudio={handlePlayAudio}
                   onMarkAsPlayed={handleMarkAsPlayed}
                 />
@@ -904,53 +1063,83 @@ export default function ChatPage() {
         )}
 
         {/* Recording Area */}
-<div className="relative flex-1 overflow-y-auto rounded-lg shadow-sm p-4 mb-6 border border-blue-100 bg-cover bg-center" style={{ background: 'linear-gradient(0deg, rgba(239, 246, 255, 0.2), rgba(239, 246, 255, 0.2)), url(/background.png) repeat' }}>          <div className="flex justify-center">
-            {isTranscribing ? (
-              <div className="flex items-center space-x-3 px-4 py-2 bg-accent/20 rounded-full">
-                <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent"></div>
-                <span className="text-foreground text-sm">Processing voice message...</span>
-              </div>
-            ) : (
-              <AudioRecorder
-                onRecordingComplete={handleRecordingComplete}
-                onRecordingStart={onRecordingStart}
-                onRecordingStop={onRecordingStop}
-                disabled={!activeConversation || isTranscribing}
-                maxDuration={120}
-              />
-            )}
-          </div>
-
-          {/* Recording Instructions */}
-          {!isRecording && !isTranscribing && (
-            <div className="text-center mt-3">
-              <p className="text-sm text-muted-foreground">
-                {useWebSocketMode 
-                  ? (isConnected 
-                      ? 'Press the microphone to start recording'
-                      : (
-                        <span className="flex items-center justify-center text-amber-500">
-                          <WifiOff className="w-4 h-4 mr-1.5" />
-                          WebSocket disconnected - using demo mode
-                        </span>
-                      )
-                    )
-                  : 'Demo mode - STT and translation only'
-                }
-              </p>
-              {user.role === 'admin' && (
-                <Link
-                  href="/admin"
-                  className="inline-flex items-center text-sm text-primary hover:text-primary/80 mt-2 transition-colors"
-                >
-                  <Settings className="w-4 h-4 mr-1.5" />
-                  Admin Dashboard
-                </Link>
+        <div 
+          className="border-t border-border/50 bg-background/80 backdrop-blur-sm p-4 relative"
+          style={{
+            background: 'linear-gradient(0deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.5)), url(/background.png)',
+            backgroundSize: 'auto',
+            backgroundRepeat: 'repeat',
+          }}
+        >
+          <div className="max-w-3xl mx-auto w-full">
+            <div className="flex justify-center">
+              {isTranscribing ? (
+                <div className="flex items-center space-x-3 px-4 py-2 bg-accent/20 rounded-full">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent"></div>
+                  <span className="text-foreground text-sm">Processing voice message...</span>
+                </div>
+              ) : (
+                <AudioRecorder
+                  onRecordingComplete={handleRecordingComplete}
+                  onRecordingStart={onRecordingStart}
+                  onRecordingStop={onRecordingStop}
+                  disabled={!activeConversation || isTranscribing}
+                  maxDuration={120}
+                />
               )}
             </div>
-          )}
+            
+            {/* Connection status */}
+            <div className="mt-2 text-center">
+              <div className="inline-flex items-center justify-center text-xs text-muted-foreground">
+                <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${
+                  useWebSocketMode 
+                    ? (isConnected ? 'bg-green-500' : 'bg-red-500') 
+                    : 'bg-amber-500'
+                }`}></span>
+                {connectionStatus}
+                {useWebSocketMode && !isConnected && !isConnecting && (
+                  <button 
+                    onClick={toggleWebSocketMode}
+                    className="ml-2 text-xs text-primary hover:underline"
+                  >
+                    Switch to Demo Mode
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Recording Instructions */}
+            {!isRecording && !isTranscribing && (
+              <div className="text-center mt-3">
+                <p className="text-sm text-muted-foreground">
+                  {useWebSocketMode 
+                    ? (isConnected 
+                        ? 'Press the microphone to start recording'
+                        : (
+                          <span className="flex items-center justify-center text-amber-500">
+                            <WifiOff className="w-4 h-4 mr-1.5" />
+                            WebSocket disconnected - using demo mode
+                          </span>
+                        )
+                      )
+                    : 'Demo mode - STT and translation only'
+                  }
+                </p>
+                {user.role === 'admin' && (
+                  <Link
+                    href="/admin"
+                    className="inline-flex items-center text-sm text-primary hover:text-primary/80 mt-2 transition-colors"
+                  >
+                    <Settings className="w-4 h-4 mr-1.5" />
+                    Admin Dashboard
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   )
-} 
+}

@@ -142,10 +142,12 @@ export default function MessageBubble({
         {!isOwnMessage && (
           <div className="flex items-center space-x-2 mb-2">
             <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold text-white bg-gradient-to-r from-primary to-accent">
-              {message.sender_name.split(' ').map(n => n[0]).join('')}
+              {message.sender_name ? 
+                message.sender_name.split(' ').map(n => n[0]).join('').toUpperCase() : 
+                '?'}
             </div>
             <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium">{message.sender_name}</span>
+              <span className="text-sm font-medium">{message.sender_name || 'Unknown User'}</span>
               <span className={`text-xs bg-accent/20 text-foreground/80 px-2 py-0.5 rounded-full`}>
                 {message.sender_role.charAt(0).toUpperCase() + message.sender_role.slice(1)}
               </span>
