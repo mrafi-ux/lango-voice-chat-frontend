@@ -11,6 +11,7 @@ interface Message {
   sender_gender?: string
   text_source: string
   text_translated: string | null
+  original_text?: string
   source_lang: string
   target_lang: string
   status: 'sent' | 'delivered' | 'played'
@@ -237,9 +238,18 @@ export default function MessageBubble({
 
         {/* Message Text */}
         <div className={`mb-2 ${isOwnMessage ? 'text-white' : 'text-foreground'}`}>
-          <p className="text-sm">
-            {isOwnMessage ? message.text_source : (message.text_translated || message.text_source)}
-          </p>
+          {isOwnMessage ? (
+            <p className="text-sm">{message.text_source}</p>
+          ) : (
+            <div>
+              <p className="text-sm">{message.text_translated || message.text_source}</p>
+              {message.text_translated && (
+                <p className={`mt-1 text-xs ${isOwnMessage ? 'text-white/80' : 'text-muted-foreground'}`}>
+                  Original: {message.original_text || message.text_source}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Timestamp and Status */}

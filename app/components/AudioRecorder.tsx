@@ -7,6 +7,8 @@ interface AudioRecorderProps {
   onRecordingComplete: (audioBlob: Blob, duration: number) => void
   onRecordingStart?: () => void
   onRecordingStop?: () => void
+  onStreamAvailable?: (stream: MediaStream) => void
+  onStreamStopped?: () => void
   maxDuration?: number
   disabled?: boolean
 }
@@ -15,6 +17,8 @@ export default function AudioRecorder({
   onRecordingComplete,
   onRecordingStart,
   onRecordingStop,
+  onStreamAvailable,
+  onStreamStopped,
   maxDuration = 120,
   disabled = false
 }: AudioRecorderProps) {
@@ -51,6 +55,7 @@ export default function AudioRecorder({
 
       streamRef.current = stream
       chunksRef.current = []
+      onStreamAvailable?.(stream)
 
       // Create MediaRecorder with WebM/Opus format
       const mediaRecorder = new MediaRecorder(stream, {
@@ -70,9 +75,15 @@ export default function AudioRecorder({
           type: 'audio/webm;codecs=opus' 
         })
         const recordingDuration = duration
-        
-        onRecordingComplete(audioBlob, recordingDuration)
-        cleanup()
+
+        const result = onRecordingComplete(audioBlob, recordingDuration)
+        if (result && typeof (result as Promise<unknown>).then === 'function') {
+          ;(result as Promise<unknown>).finally(() => {
+            cleanup()
+          })
+        } else {
+          cleanup()
+        }
       }
 
       // Start recording
@@ -118,6 +129,7 @@ export default function AudioRecorder({
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
+      onStreamStopped?.()
     }
 
     if (mediaRecorderRef.current) {
